@@ -3,7 +3,7 @@ package common
 import (
 	"bufio"
 	"encoding/hex"
-	"flag"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -11,24 +11,24 @@ import (
 	"strings"
 )
 
-func Parse(Info *HostInfo) {
-	ParseUser()
-	ParsePass(Info)
-	ParseInput(Info)
-	ParseScantype(Info)
+func Parse(configInfo *ConfigInfo, hostInfo *HostInfo) {
+	ParseUser(configInfo)
+	ParsePass(configInfo)
+	ParseInput(configInfo, hostInfo)
+	ParseScantype(configInfo)
 }
 
-func ParseUser() {
-	if Username == "" && Userfile == "" {
+func ParseUser(Info *ConfigInfo) {
+	if Info.Username == "" && Info.Userfile == "" {
 		return
 	}
 	var Usernames []string
-	if Username != "" {
-		Usernames = strings.Split(Username, ",")
+	if Info.Username != "" {
+		Usernames = strings.Split(Info.Username, ",")
 	}
 
-	if Userfile != "" {
-		users, err := Readfile(Userfile)
+	if Info.Userfile != "" {
+		users, err := Readfile(Info.Userfile)
 		if err == nil {
 			for _, user := range users {
 				if user != "" {
@@ -44,10 +44,10 @@ func ParseUser() {
 	}
 }
 
-func ParsePass(Info *HostInfo) {
+func ParsePass(Info *ConfigInfo) {
 	var PwdList []string
-	if Password != "" {
-		passs := strings.Split(Password, ",")
+	if Info.Password != "" {
+		passs := strings.Split(Info.Password, ",")
 		for _, pass := range passs {
 			if pass != "" {
 				PwdList = append(PwdList, pass)
@@ -55,8 +55,8 @@ func ParsePass(Info *HostInfo) {
 		}
 		Passwords = PwdList
 	}
-	if Passfile != "" {
-		passs, err := Readfile(Passfile)
+	if Info.Passfile != "" {
+		passs, err := Readfile(Info.Passfile)
 		if err == nil {
 			for _, pass := range passs {
 				if pass != "" {
@@ -66,34 +66,34 @@ func ParsePass(Info *HostInfo) {
 			Passwords = PwdList
 		}
 	}
-	if URL != "" {
-		urls := strings.Split(URL, ",")
+	if Info.URL != "" {
+		urls := strings.Split(Info.URL, ",")
 		TmpUrls := make(map[string]struct{})
 		for _, url := range urls {
 			if _, ok := TmpUrls[url]; !ok {
 				TmpUrls[url] = struct{}{}
 				if url != "" {
-					Urls = append(Urls, url)
+					Info.Urls = append(Info.Urls, url)
 				}
 			}
 		}
 	}
-	if UrlFile != "" {
-		urls, err := Readfile(UrlFile)
+	if Info.UrlFile != "" {
+		urls, err := Readfile(Info.UrlFile)
 		if err == nil {
 			TmpUrls := make(map[string]struct{})
 			for _, url := range urls {
 				if _, ok := TmpUrls[url]; !ok {
 					TmpUrls[url] = struct{}{}
 					if url != "" {
-						Urls = append(Urls, url)
+						Info.Urls = append(Info.Urls, url)
 					}
 				}
 			}
 		}
 	}
-	if PortFile != "" {
-		ports, err := Readfile(PortFile)
+	if Info.PortFile != "" {
+		ports, err := Readfile(Info.PortFile)
 		if err == nil {
 			newport := ""
 			for _, port := range ports {
@@ -101,7 +101,7 @@ func ParsePass(Info *HostInfo) {
 					newport += port + ","
 				}
 			}
-			Ports = newport
+			Info.WebPorts = newport
 		}
 	}
 }
@@ -110,7 +110,7 @@ func Readfile(filename string) ([]string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		fmt.Printf("Open %s error, %v\n", filename, err)
-		os.Exit(0)
+		panic(errors.New("Open " + filename + " error"))
 	}
 	defer file.Close()
 	var content []string
@@ -125,143 +125,142 @@ func Readfile(filename string) ([]string, error) {
 	return content, nil
 }
 
-func ParseInput(Info *HostInfo) {
-	if Info.Host == "" && HostFile == "" && URL == "" && UrlFile == "" {
+func ParseInput(configInfo *ConfigInfo, hostInfo *HostInfo) {
+	if hostInfo.Host == "" && configInfo.HostFile == "" && configInfo.URL == "" && configInfo.UrlFile == "" {
 		fmt.Println("Host is none")
-		flag.Usage()
-		os.Exit(0)
+		//flag.Usage()
+		panic(errors.New("host is none"))
 	}
 
-	if BruteThread <= 0 {
-		BruteThread = 1
+	if configInfo.BruteThread <= 0 {
+		configInfo.BruteThread = 1
 	}
 
-	if TmpSave == true {
+	if configInfo.TmpSave == true {
 		IsSave = false
 	}
 
-	if Ports == DefaultPorts {
-		Ports += "," + Webport
+	if configInfo.WebPorts == DefaultPorts {
+		configInfo.WebPorts += "," + Webport
 	}
 
-	if PortAdd != "" {
-		if strings.HasSuffix(Ports, ",") {
-			Ports += PortAdd
+	if configInfo.PortAdd != "" {
+		if strings.HasSuffix(configInfo.WebPorts, ",") {
+			configInfo.WebPorts += configInfo.PortAdd
 		} else {
-			Ports += "," + PortAdd
+			configInfo.WebPorts += "," + configInfo.PortAdd
 		}
 	}
 
-	if UserAdd != "" {
-		user := strings.Split(UserAdd, ",")
+	if configInfo.UserAdd != "" {
+		user := strings.Split(configInfo.UserAdd, ",")
 		for a := range Userdict {
 			Userdict[a] = append(Userdict[a], user...)
 			Userdict[a] = RemoveDuplicate(Userdict[a])
 		}
 	}
 
-	if PassAdd != "" {
-		pass := strings.Split(PassAdd, ",")
+	if configInfo.PassAdd != "" {
+		pass := strings.Split(configInfo.PassAdd, ",")
 		Passwords = append(Passwords, pass...)
 		Passwords = RemoveDuplicate(Passwords)
 	}
-	if Socks5Proxy != "" && !strings.HasPrefix(Socks5Proxy, "socks5://") {
-		if !strings.Contains(Socks5Proxy, ":") {
-			Socks5Proxy = "socks5://127.0.0.1" + Socks5Proxy
+	if configInfo.Socks5Proxy != "" && !strings.HasPrefix(configInfo.Socks5Proxy, "socks5://") {
+		if !strings.Contains(configInfo.Socks5Proxy, ":") {
+			configInfo.Socks5Proxy = "socks5://127.0.0.1" + configInfo.Socks5Proxy
 		} else {
-			Socks5Proxy = "socks5://" + Socks5Proxy
+			configInfo.Socks5Proxy = "socks5://" + configInfo.Socks5Proxy
 		}
 	}
-	if Socks5Proxy != "" {
-		fmt.Println("Socks5Proxy:", Socks5Proxy)
-		_, err := url.Parse(Socks5Proxy)
+	if configInfo.Socks5Proxy != "" {
+		fmt.Println("Socks5Proxy:", configInfo.Socks5Proxy)
+		_, err := url.Parse(configInfo.Socks5Proxy)
 		if err != nil {
 			fmt.Println("Socks5Proxy parse error:", err)
-			os.Exit(0)
+			panic(errors.New("Socks5Proxy parse error"))
 		}
-		NoPing = true
+		configInfo.NoPing = true
 	}
-	if Proxy != "" {
-		if Proxy == "1" {
-			Proxy = "http://127.0.0.1:8080"
-		} else if Proxy == "2" {
-			Proxy = "socks5://127.0.0.1:1080"
-		} else if !strings.Contains(Proxy, "://") {
-			Proxy = "http://127.0.0.1:" + Proxy
+	if configInfo.Proxy != "" {
+		if configInfo.Proxy == "1" {
+			configInfo.Proxy = "http://127.0.0.1:8080"
+		} else if configInfo.Proxy == "2" {
+			configInfo.Proxy = "socks5://127.0.0.1:1080"
+		} else if !strings.Contains(configInfo.Proxy, "://") {
+			configInfo.Proxy = "http://127.0.0.1:" + configInfo.Proxy
 		}
-		fmt.Println("Proxy:", Proxy)
-		if !strings.HasPrefix(Proxy, "socks") && !strings.HasPrefix(Proxy, "http") {
-			fmt.Println("no support this proxy")
-			os.Exit(0)
+		fmt.Println("Proxy:", configInfo.Proxy)
+		if !strings.HasPrefix(configInfo.Proxy, "socks") && !strings.HasPrefix(configInfo.Proxy, "http") {
+			panic(errors.New("no support this proxy"))
 		}
-		_, err := url.Parse(Proxy)
+		_, err := url.Parse(configInfo.Proxy)
 		if err != nil {
 			fmt.Println("Proxy parse error:", err)
-			os.Exit(0)
+			panic(errors.New("proxy parse error"))
 		}
 	}
 
-	if Hash != "" && len(Hash) != 32 {
+	if configInfo.Hash != "" && len(configInfo.Hash) != 32 {
 		fmt.Println("[-] Hash is error,len(hash) must be 32")
-		os.Exit(0)
+		panic(errors.New("[-] Hash is error,len(hash) must be 32"))
 	} else {
 		var err error
-		HashBytes, err = hex.DecodeString(Hash)
+		configInfo.HashBytes, err = hex.DecodeString(configInfo.Hash)
 		if err != nil {
 			fmt.Println("[-] Hash is error,hex decode error")
-			os.Exit(0)
+			panic(errors.New("[-] Hash is error,hex decode error"))
 		}
 	}
 }
 
-func ParseScantype(Info *HostInfo) {
-	_, ok := PORTList[Scantype]
+func ParseScantype(Info *ConfigInfo) {
+	_, ok := PORTList[Info.Scantype]
 	if !ok {
 		showmode()
 	}
-	if Scantype != "all" && Ports == DefaultPorts+","+Webport {
-		switch Scantype {
+	if Info.Scantype != "all" && Info.WebPorts == DefaultPorts+","+Webport {
+		switch Info.Scantype {
 		case "wmiexec":
-			Ports = "135"
+			Info.WebPorts = "135"
 		case "wmiinfo":
-			Ports = "135"
+			Info.WebPorts = "135"
 		case "smbinfo":
-			Ports = "445"
+			Info.WebPorts = "445"
 		case "hostname":
-			Ports = "135,137,139,445"
+			Info.WebPorts = "135,137,139,445"
 		case "smb2":
-			Ports = "445"
+			Info.WebPorts = "445"
 		case "web":
-			Ports = Webport
+			Info.WebPorts = Webport
 		case "webonly":
-			Ports = Webport
+			Info.WebPorts = Webport
 		case "ms17010":
-			Ports = "445"
+			Info.WebPorts = "445"
 		case "cve20200796":
-			Ports = "445"
+			Info.WebPorts = "445"
 		case "portscan":
-			Ports = DefaultPorts + "," + Webport
+			Info.WebPorts = DefaultPorts + "," + Webport
 		case "main":
-			Ports = DefaultPorts
+			Info.WebPorts = DefaultPorts
 		default:
-			port, _ := PORTList[Scantype]
-			Ports = strconv.Itoa(port)
+			port, _ := PORTList[Info.Scantype]
+			Info.WebPorts = strconv.Itoa(port)
 		}
-		fmt.Println("-m ", Scantype, " start scan the port:", Ports)
+		fmt.Println("-m ", Info.Scantype, " start scan the port:", Info.WebPorts)
 	}
 }
 
-func CheckErr(text string, err error, flag bool) {
-	if err != nil {
-		fmt.Println("Parse", text, "error: ", err.Error())
-		if flag {
-			if err != ParseIPErr {
-				fmt.Println(ParseIPErr)
-			}
-			os.Exit(0)
-		}
-	}
-}
+//func CheckErr(text string, err error, flag bool) {
+//	if err != nil {
+//		fmt.Println("Parse", text, "error: ", err.Error())
+//		if flag {
+//			if err != ParseIPErr {
+//				fmt.Println(ParseIPErr)
+//			}
+//			os.Exit(0)
+//		}
+//	}
+//}
 
 func showmode() {
 	fmt.Println("The specified scan type does not exist")
@@ -269,5 +268,5 @@ func showmode() {
 	for name := range PORTList {
 		fmt.Println("   [" + name + "]")
 	}
-	os.Exit(0)
+	panic(errors.New("the specified scan type does not exist"))
 }

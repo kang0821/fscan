@@ -16,19 +16,19 @@ var (
 	bufferV3, _ = hex.DecodeString("0900ffff0000")
 )
 
-func Findnet(info *common.HostInfo) error {
-	err := FindnetScan(info)
+func Findnet(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) error {
+	err := FindnetScan(configInfo, hostInfo)
 	return err
 }
 
-func FindnetScan(info *common.HostInfo) error {
-	realhost := fmt.Sprintf("%s:%v", info.Host, 135)
-	conn, err := common.WrapperTcpWithTimeout("tcp", realhost, time.Duration(common.Timeout)*time.Second)
+func FindnetScan(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) error {
+	realhost := fmt.Sprintf("%s:%v", hostInfo.Host, 135)
+	conn, err := common.WrapperTcpWithTimeout(configInfo.Socks5Proxy, "tcp", realhost, time.Duration(configInfo.Timeout)*time.Second)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = conn.SetDeadline(time.Now().Add(time.Duration(common.Timeout) * time.Second))
+	err = conn.SetDeadline(time.Now().Add(time.Duration(configInfo.Timeout) * time.Second))
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func FindnetScan(info *common.HostInfo) error {
 	if flag {
 		return err
 	}
-	err = read(text, info.Host)
+	err = read(text, configInfo, hostInfo)
 	return err
 }
 
@@ -89,7 +89,7 @@ func HexUnicodeStringToString(src string) string {
 	return context
 }
 
-func read(text []byte, host string) error {
+func read(text []byte, configInfo *common.ConfigInfo, hostInfo *common.HostInfo) error {
 	encodedStr := hex.EncodeToString(text)
 
 	hn := ""
@@ -105,7 +105,7 @@ func read(text []byte, host string) error {
 
 	hostnames := strings.Replace(encodedStr, "0700", "", -1)
 	hostname := strings.Split(hostnames, "000000")
-	result := "[*] NetInfo \n[*]" + host
+	result := "[*] NetInfo \n[*]" + hostInfo.Host
 	if name != "" {
 		result += "\n   [->]" + name
 	}
@@ -118,6 +118,6 @@ func read(text []byte, host string) error {
 		}
 		result += "\n   [->]" + string(host)
 	}
-	common.LogSuccess(result)
+	common.LogSuccess(&configInfo.LogInfo, result)
 	return nil
 }

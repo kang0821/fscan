@@ -26,8 +26,8 @@ type Brutelist struct {
 	pass string
 }
 
-func RdpScan(info *common.HostInfo) (tmperr error) {
-	if common.IsBrute {
+func RdpScan(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) (tmperr error) {
+	if configInfo.IsBrute {
 		return
 	}
 
@@ -37,11 +37,12 @@ func RdpScan(info *common.HostInfo) (tmperr error) {
 	var all = len(common.Userdict["rdp"]) * len(common.Passwords)
 	var mutex sync.Mutex
 	brlist := make(chan Brutelist)
-	port, _ := strconv.Atoi(info.Ports)
+	port, _ := strconv.Atoi(hostInfo.Ports)
 
-	for i := 0; i < common.BruteThread; i++ {
+	for i := 0; i < configInfo.BruteThread; i++ {
 		wg.Add(1)
-		go worker(info.Host, common.Domain, port, &wg, brlist, &signal, &num, all, &mutex, common.Timeout)
+		//go worker(info.Host, info.Domain, port, &wg, brlist, &signal, &num, all, &mutex, info.Timeout)
+		go worker(configInfo, hostInfo, port, &wg, brlist, &signal, &num, all, &mutex)
 	}
 
 	for _, user := range common.Userdict["rdp"] {
@@ -61,7 +62,7 @@ func RdpScan(info *common.HostInfo) (tmperr error) {
 	return tmperr
 }
 
-func worker(host, domain string, port int, wg *sync.WaitGroup, brlist chan Brutelist, signal *bool, num *int, all int, mutex *sync.Mutex, timeout int64) {
+func worker(configInfo *common.ConfigInfo, hostInfo *common.HostInfo, port int, wg *sync.WaitGroup, brlist chan Brutelist, signal *bool, num *int, all int, mutex *sync.Mutex) {
 	defer wg.Done()
 	for one := range brlist {
 		if *signal == true {
@@ -69,20 +70,21 @@ func worker(host, domain string, port int, wg *sync.WaitGroup, brlist chan Brute
 		}
 		go incrNum(num, mutex)
 		user, pass := one.user, one.pass
-		flag, err := RdpConn(host, domain, user, pass, port, timeout)
+		//flag, err := RdpConn(info.HostFile, info.Domain, user, pass, port, info.Timeout)
+		flag, err := RdpConn(configInfo, hostInfo, user, pass, port)
 		if flag == true && err == nil {
 			var result string
-			if domain != "" {
-				result = fmt.Sprintf("[+] RDP %v:%v:%v\\%v %v", host, port, domain, user, pass)
+			if configInfo.Domain != "" {
+				result = fmt.Sprintf("[+] RDP %v:%v:%v\\%v %v", hostInfo.Host, port, configInfo.Domain, user, pass)
 			} else {
-				result = fmt.Sprintf("[+] RDP %v:%v:%v %v", host, port, user, pass)
+				result = fmt.Sprintf("[+] RDP %v:%v:%v %v", hostInfo.Host, port, user, pass)
 			}
-			common.LogSuccess(result)
+			common.LogSuccess(&configInfo.LogInfo, result)
 			*signal = true
 			return
 		} else {
-			errlog := fmt.Sprintf("[-] (%v/%v) rdp %v:%v %v %v %v", *num, all, host, port, user, pass, err)
-			common.LogError(errlog)
+			errlog := fmt.Sprintf("[-] (%v/%v) rdp %v:%v %v %v %v", *num, all, hostInfo.Host, port, user, pass, err)
+			common.LogError(&configInfo.LogInfo, errlog)
 		}
 	}
 }
@@ -93,10 +95,10 @@ func incrNum(num *int, mutex *sync.Mutex) {
 	mutex.Unlock()
 }
 
-func RdpConn(ip, domain, user, password string, port int, timeout int64) (bool, error) {
-	target := fmt.Sprintf("%s:%d", ip, port)
+func RdpConn(configInfo *common.ConfigInfo, hostInfo *common.HostInfo, user, password string, port int) (bool, error) {
+	target := fmt.Sprintf("%s:%d", configInfo.HostFile, port)
 	g := NewClient(target, glog.NONE)
-	err := g.Login(domain, user, password, timeout)
+	err := g.Login(configInfo, user, password)
 
 	if err == nil {
 		return true, nil
@@ -124,15 +126,15 @@ func NewClient(host string, logLevel glog.LEVEL) *Client {
 	}
 }
 
-func (g *Client) Login(domain, user, pwd string, timeout int64) error {
-	conn, err := common.WrapperTcpWithTimeout("tcp", g.Host, time.Duration(timeout)*time.Second)
+func (g *Client) Login(info *common.ConfigInfo, user, pwd string) error {
+	conn, err := common.WrapperTcpWithTimeout(info.Socks5Proxy, "tcp", g.Host, time.Duration(info.Timeout)*time.Second)
 	if err != nil {
 		return fmt.Errorf("[dial err] %v", err)
 	}
 	defer conn.Close()
 	glog.Info(conn.LocalAddr().String())
 
-	g.tpkt = tpkt.New(core.NewSocketLayer(conn), nla.NewNTLMv2(domain, user, pwd))
+	g.tpkt = tpkt.New(core.NewSocketLayer(conn), nla.NewNTLMv2(info.Domain, user, pwd))
 	g.x224 = x224.New(g.tpkt)
 	g.mcs = t125.NewMCSClient(g.x224)
 	g.sec = sec.NewClient(g.mcs)
@@ -140,7 +142,7 @@ func (g *Client) Login(domain, user, pwd string, timeout int64) error {
 
 	g.sec.SetUser(user)
 	g.sec.SetPwd(pwd)
-	g.sec.SetDomain(domain)
+	g.sec.SetDomain(info.Domain)
 	//g.sec.SetClientAutoReconnect()
 
 	g.tpkt.SetFastPathListener(g.sec)

@@ -23,28 +23,27 @@ var ParseIPErr = errors.New(" host parsing error\n" +
 	"192.168.1.1-192.168.255.255\n" +
 	"192.168.1.1-255")
 
-func ParseIP(host string, filename string, nohosts ...string) (hosts []string, err error) {
-	if filename == "" && strings.Contains(host, ":") {
+func ParseIP(info *ConfigInfo, hostInfo *HostInfo) (hosts []string, err error) {
+	if info.HostFile == "" && strings.Contains(hostInfo.Host, ":") {
 		//192.168.0.0/16:80
-		hostport := strings.Split(host, ":")
+		hostport := strings.Split(hostInfo.Host, ":")
 		if len(hostport) == 2 {
-			host = hostport[0]
-			hosts = ParseIPs(host)
-			Ports = hostport[1]
+			hostInfo.Host = hostport[0]
+			hosts = ParseIPs(hostInfo.Host)
+			info.WebPorts = hostport[1]
 		}
 	} else {
-		hosts = ParseIPs(host)
-		if filename != "" {
+		hosts = ParseIPs(hostInfo.Host)
+		if info.HostFile != "" {
 			var filehost []string
-			filehost, _ = Readipfile(filename)
+			filehost, _ = Readipfile(info)
 			hosts = append(hosts, filehost...)
 		}
 	}
 
-	if len(nohosts) > 0 {
-		nohost := nohosts[0]
-		if nohost != "" {
-			nohosts := ParseIPs(nohost)
+	if len(info.NoHosts) > 0 {
+		if info.NoHosts != "" {
+			nohosts := ParseIPs(info.NoHosts)
 			if len(nohosts) > 0 {
 				temp := map[string]struct{}{}
 				for _, host := range hosts {
@@ -65,7 +64,7 @@ func ParseIP(host string, filename string, nohosts ...string) (hosts []string, e
 		}
 	}
 	hosts = RemoveDuplicate(hosts)
-	if len(hosts) == 0 && len(HostPort) == 0 && host != "" && filename != "" {
+	if len(hosts) == 0 && len(info.HostPort) == 0 && hostInfo.Host != "" && info.HostFile != "" {
 		err = ParseIPErr
 	}
 	return
@@ -193,11 +192,10 @@ func IPRange(c *net.IPNet) string {
 }
 
 // 按行读ip
-func Readipfile(filename string) ([]string, error) {
-	file, err := os.Open(filename)
+func Readipfile(info *ConfigInfo) ([]string, error) {
+	file, err := os.Open(info.HostFile)
 	if err != nil {
-		fmt.Printf("Open %s error, %v", filename, err)
-		os.Exit(0)
+		panic(fmt.Errorf("open %s error, %v", info.HostFile, err))
 	}
 	defer file.Close()
 	var content []string
@@ -215,7 +213,7 @@ func Readipfile(filename string) ([]string, error) {
 				}
 				hosts := ParseIPs(text[0])
 				for _, host := range hosts {
-					HostPort = append(HostPort, fmt.Sprintf("%s:%s", host, port))
+					info.HostPort = append(info.HostPort, fmt.Sprintf("%s:%s", host, port))
 				}
 			} else {
 				host := ParseIPs(line)

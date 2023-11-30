@@ -14,14 +14,14 @@ type Addr struct {
 	port int
 }
 
-func PortScan(hostslist []string, ports string, timeout int64) []string {
+func PortScan(hostslist []string, configInfo *common.ConfigInfo) []string {
 	var AliveAddress []string
-	probePorts := common.ParsePort(ports)
+	probePorts := common.ParsePort(configInfo.WebPorts)
 	if len(probePorts) == 0 {
-		fmt.Printf("[-] parse port %s error, please check your port format\n", ports)
+		fmt.Printf("[-] parse port %s error, please check your port format\n", configInfo.WebPorts)
 		return AliveAddress
 	}
-	noPorts := common.ParsePort(common.NoPorts)
+	noPorts := common.ParsePort(configInfo.NoPorts)
 	if len(noPorts) > 0 {
 		temp := map[int]struct{}{}
 		for _, port := range probePorts {
@@ -39,7 +39,7 @@ func PortScan(hostslist []string, ports string, timeout int64) []string {
 		probePorts = newDatas
 		sort.Ints(probePorts)
 	}
-	workers := common.Threads
+	workers := configInfo.Threads
 	Addrs := make(chan Addr, len(hostslist)*len(probePorts))
 	results := make(chan string, len(hostslist)*len(probePorts))
 	var wg sync.WaitGroup
@@ -56,7 +56,7 @@ func PortScan(hostslist []string, ports string, timeout int64) []string {
 	for i := 0; i < workers; i++ {
 		go func() {
 			for addr := range Addrs {
-				PortConnect(addr, results, timeout, &wg)
+				PortConnect(addr, results, configInfo, &wg)
 				wg.Done()
 			}
 		}()
@@ -75,22 +75,22 @@ func PortScan(hostslist []string, ports string, timeout int64) []string {
 	return AliveAddress
 }
 
-func PortConnect(addr Addr, respondingHosts chan<- string, adjustedTimeout int64, wg *sync.WaitGroup) {
+func PortConnect(addr Addr, respondingHosts chan<- string, configInfo *common.ConfigInfo, wg *sync.WaitGroup) {
 	host, port := addr.ip, addr.port
-	conn, err := common.WrapperTcpWithTimeout("tcp4", fmt.Sprintf("%s:%v", host, port), time.Duration(adjustedTimeout)*time.Second)
+	conn, err := common.WrapperTcpWithTimeout(configInfo.Socks5Proxy, "tcp4", fmt.Sprintf("%s:%v", host, port), time.Duration(configInfo.Timeout)*time.Second)
 	if err == nil {
 		defer conn.Close()
 		address := host + ":" + strconv.Itoa(port)
 		result := fmt.Sprintf("%s open", address)
-		common.LogSuccess(result)
+		common.LogSuccess(&configInfo.LogInfo, result)
 		wg.Add(1)
 		respondingHosts <- address
 	}
 }
 
-func NoPortScan(hostslist []string, ports string) (AliveAddress []string) {
+func NoPortScan(hostslist []string, ports, NoPorts string) (AliveAddress []string) {
 	probePorts := common.ParsePort(ports)
-	noPorts := common.ParsePort(common.NoPorts)
+	noPorts := common.ParsePort(NoPorts)
 	if len(noPorts) > 0 {
 		temp := map[int]struct{}{}
 		for _, port := range probePorts {

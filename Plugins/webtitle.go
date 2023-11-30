@@ -18,83 +18,83 @@ import (
 	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
-func WebTitle(info *common.HostInfo) error {
-	if common.Scantype == "webpoc" {
-		WebScan.WebScan(info)
+func WebTitle(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) error {
+	if configInfo.Scantype == "webpoc" {
+		WebScan.WebScan(configInfo, hostInfo)
 		return nil
 	}
-	err, CheckData := GOWebTitle(info)
-	info.Infostr = WebScan.InfoCheck(info.Url, &CheckData)
+	err, CheckData := GOWebTitle(configInfo, hostInfo)
+	hostInfo.Infostr = WebScan.InfoCheck(configInfo, hostInfo, &CheckData)
 
-	if !common.NoPoc && err == nil {
-		WebScan.WebScan(info)
+	if !configInfo.NoPoc && err == nil {
+		WebScan.WebScan(configInfo, hostInfo)
 	} else {
-		errlog := fmt.Sprintf("[-] webtitle %v %v", info.Url, err)
-		common.LogError(errlog)
+		errlog := fmt.Sprintf("[-] webtitle %v %v", hostInfo.Url, err)
+		common.LogError(&configInfo.LogInfo, errlog)
 	}
 	return err
 }
-func GOWebTitle(info *common.HostInfo) (err error, CheckData []WebScan.CheckDatas) {
-	if info.Url == "" {
-		switch info.Ports {
+func GOWebTitle(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) (err error, CheckData []WebScan.CheckDatas) {
+	if hostInfo.Url == "" {
+		switch hostInfo.Ports {
 		case "80":
-			info.Url = fmt.Sprintf("http://%s", info.Host)
+			hostInfo.Url = fmt.Sprintf("http://%s", hostInfo.Host)
 		case "443":
-			info.Url = fmt.Sprintf("https://%s", info.Host)
+			hostInfo.Url = fmt.Sprintf("https://%s", hostInfo.Host)
 		default:
-			host := fmt.Sprintf("%s:%s", info.Host, info.Ports)
-			protocol := GetProtocol(host, common.Timeout)
-			info.Url = fmt.Sprintf("%s://%s:%s", protocol, info.Host, info.Ports)
+			host := fmt.Sprintf("%s:%s", hostInfo.Host, hostInfo.Ports)
+			protocol := GetProtocol(host, configInfo)
+			hostInfo.Url = fmt.Sprintf("%s://%s:%s", protocol, hostInfo.Host, hostInfo.Ports)
 		}
 	} else {
-		if !strings.Contains(info.Url, "://") {
-			host := strings.Split(info.Url, "/")[0]
-			protocol := GetProtocol(host, common.Timeout)
-			info.Url = fmt.Sprintf("%s://%s", protocol, info.Url)
+		if !strings.Contains(hostInfo.Url, "://") {
+			host := strings.Split(hostInfo.Url, "/")[0]
+			protocol := GetProtocol(host, configInfo)
+			hostInfo.Url = fmt.Sprintf("%s://%s", protocol, hostInfo.Url)
 		}
 	}
 
-	err, result, CheckData := geturl(info, 1, CheckData)
+	err, result, CheckData := geturl(configInfo, hostInfo, 1, CheckData)
 	if err != nil && !strings.Contains(err.Error(), "EOF") {
 		return
 	}
 
 	//有跳转
 	if strings.Contains(result, "://") {
-		info.Url = result
-		err, result, CheckData = geturl(info, 3, CheckData)
+		hostInfo.Url = result
+		err, result, CheckData = geturl(configInfo, hostInfo, 3, CheckData)
 		if err != nil {
 			return
 		}
 	}
 
-	if result == "https" && !strings.HasPrefix(info.Url, "https://") {
-		info.Url = strings.Replace(info.Url, "http://", "https://", 1)
-		err, result, CheckData = geturl(info, 1, CheckData)
+	if result == "https" && !strings.HasPrefix(hostInfo.Url, "https://") {
+		hostInfo.Url = strings.Replace(hostInfo.Url, "http://", "https://", 1)
+		err, result, CheckData = geturl(configInfo, hostInfo, 1, CheckData)
 		//有跳转
 		if strings.Contains(result, "://") {
-			info.Url = result
-			err, _, CheckData = geturl(info, 3, CheckData)
+			hostInfo.Url = result
+			err, _, CheckData = geturl(configInfo, hostInfo, 3, CheckData)
 			if err != nil {
 				return
 			}
 		}
 	}
 	//是否访问图标
-	//err, _, CheckData = geturl(info, 2, CheckData)
+	//err, _, CheckData = geturl(configInfo, 2, CheckData)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func geturl(info *common.HostInfo, flag int, CheckData []WebScan.CheckDatas) (error, string, []WebScan.CheckDatas) {
+func geturl(configInfo *common.ConfigInfo, hostInfo *common.HostInfo, flag int, CheckData []WebScan.CheckDatas) (error, string, []WebScan.CheckDatas) {
 	//flag 1 first try
 	//flag 2 /favicon.ico
 	//flag 3 302
 	//flag 4 400 -> https
 
-	Url := info.Url
+	Url := hostInfo.Url
 	if flag == 2 {
 		URL, err := url.Parse(Url)
 		if err == nil {
@@ -107,11 +107,11 @@ func geturl(info *common.HostInfo, flag int, CheckData []WebScan.CheckDatas) (er
 	if err != nil {
 		return err, "", CheckData
 	}
-	req.Header.Set("User-agent", common.UserAgent)
-	req.Header.Set("Accept", common.Accept)
+	req.Header.Set("User-agent", configInfo.UserAgent)
+	req.Header.Set("Accept", configInfo.Accept)
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9")
-	if common.Cookie != "" {
-		req.Header.Set("Cookie", common.Cookie)
+	if configInfo.Cookie != "" {
+		req.Header.Set("Cookie", configInfo.Cookie)
 	}
 	//if common.Pocinfo.Cookie != "" {
 	//	req.Header.Set("Cookie", "rememberMe=1;"+common.Pocinfo.Cookie)
@@ -156,12 +156,12 @@ func geturl(info *common.HostInfo, flag int, CheckData []WebScan.CheckDatas) (er
 		if reurl != "" {
 			result += fmt.Sprintf(" 跳转url: %s", reurl)
 		}
-		common.LogSuccess(result)
+		common.LogSuccess(&configInfo.LogInfo, result)
 	}
 	if reurl != "" {
 		return nil, reurl, CheckData
 	}
-	if resp.StatusCode == 400 && !strings.HasPrefix(info.Url, "https") {
+	if resp.StatusCode == 400 && !strings.HasPrefix(hostInfo.Url, "https") {
 		return nil, "https", CheckData
 	}
 	return nil, "", CheckData
@@ -217,7 +217,7 @@ func gettitle(body []byte) (title string) {
 	return
 }
 
-func GetProtocol(host string, Timeout int64) (protocol string) {
+func GetProtocol(host string, configInfo *common.ConfigInfo) (protocol string) {
 	protocol = "http"
 	//如果端口是80或443,跳过Protocol判断
 	if strings.HasSuffix(host, ":80") || !strings.Contains(host, ":") {
@@ -227,7 +227,7 @@ func GetProtocol(host string, Timeout int64) (protocol string) {
 		return
 	}
 
-	socksconn, err := common.WrapperTcpWithTimeout("tcp", host, time.Duration(Timeout)*time.Second)
+	socksconn, err := common.WrapperTcpWithTimeout(configInfo.Socks5Proxy, "tcp", host, time.Duration(configInfo.Timeout)*time.Second)
 	if err != nil {
 		return
 	}
@@ -236,13 +236,13 @@ func GetProtocol(host string, Timeout int64) (protocol string) {
 		if conn != nil {
 			defer func() {
 				if err := recover(); err != nil {
-					common.LogError(err)
+					common.LogError(&configInfo.LogInfo, err)
 				}
 			}()
 			conn.Close()
 		}
 	}()
-	conn.SetDeadline(time.Now().Add(time.Duration(Timeout) * time.Second))
+	conn.SetDeadline(time.Now().Add(time.Duration(configInfo.Timeout) * time.Second))
 	err = conn.Handshake()
 	if err == nil || strings.Contains(err.Error(), "handshake failure") {
 		protocol = "https"

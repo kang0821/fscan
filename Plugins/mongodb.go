@@ -7,19 +7,19 @@ import (
 	"time"
 )
 
-func MongodbScan(info *common.HostInfo) error {
-	if common.IsBrute {
+func MongodbScan(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) error {
+	if configInfo.IsBrute {
 		return nil
 	}
-	_, err := MongodbUnauth(info)
+	_, err := MongodbUnauth(configInfo, hostInfo)
 	if err != nil {
-		errlog := fmt.Sprintf("[-] Mongodb %v:%v %v", info.Host, info.Ports, err)
-		common.LogError(errlog)
+		errlog := fmt.Sprintf("[-] Mongodb %v:%v %v", hostInfo.Host, hostInfo.Ports, err)
+		common.LogError(&configInfo.LogInfo, errlog)
 	}
 	return err
 }
 
-func MongodbUnauth(info *common.HostInfo) (flag bool, err error) {
+func MongodbUnauth(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) (flag bool, err error) {
 	flag = false
 	// op_msg
 	packet1 := []byte{
@@ -45,15 +45,15 @@ func MongodbUnauth(info *common.HostInfo) (flag bool, err error) {
 		0x21, 0x00, 0x00, 0x00, 0x2, 0x67, 0x65, 0x74, 0x4c, 0x6f, 0x67, 0x00, 0x10, 0x00, 0x00, 0x00, 0x73, 0x74, 0x61, 0x72, 0x74, 0x75, 0x70, 0x57, 0x61, 0x72, 0x6e, 0x69, 0x6e, 0x67, 0x73, 0x00, 0x00,
 	}
 
-	realhost := fmt.Sprintf("%s:%v", info.Host, info.Ports)
+	realhost := fmt.Sprintf("%s:%v", hostInfo.Host, hostInfo.Ports)
 
 	checkUnAuth := func(address string, packet []byte) (string, error) {
-		conn, err := common.WrapperTcpWithTimeout("tcp", realhost, time.Duration(common.Timeout)*time.Second)
+		conn, err := common.WrapperTcpWithTimeout(configInfo.Socks5Proxy, "tcp", realhost, time.Duration(configInfo.Timeout)*time.Second)
 		if err != nil {
 			return "", err
 		}
 		defer conn.Close()
-		err = conn.SetReadDeadline(time.Now().Add(time.Duration(common.Timeout) * time.Second))
+		err = conn.SetReadDeadline(time.Now().Add(time.Duration(configInfo.Timeout) * time.Second))
 		if err != nil {
 			return "", err
 		}
@@ -80,7 +80,7 @@ func MongodbUnauth(info *common.HostInfo) (flag bool, err error) {
 	if strings.Contains(reply, "totalLinesWritten") {
 		flag = true
 		result := fmt.Sprintf("[+] Mongodb %v unauthorized", realhost)
-		common.LogSuccess(result)
+		common.LogSuccess(&configInfo.LogInfo, result)
 	}
 	return flag, err
 }

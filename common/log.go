@@ -6,42 +6,29 @@ import (
 	"github.com/fatih/color"
 	"os"
 	"strings"
-	"sync"
 	"time"
 )
-
-var Num int64
-var End int64
-var Results = make(chan *string)
-var Start = true
-var LogSucTime int64
-var LogErrTime int64
-var WaitTime int64
-var Silent bool
-var Nocolor bool
-var JsonOutput bool
-var LogWG sync.WaitGroup
 
 type JsonText struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
 }
 
-func init() {
-	LogSucTime = time.Now().Unix()
-	go SaveLog()
+func InitLog(info *ConfigInfo) {
+	info.LogInfo.LogSucTime = time.Now().Unix()
+	go SaveLog(info)
 }
 
-func LogSuccess(result string) {
-	LogWG.Add(1)
-	LogSucTime = time.Now().Unix()
-	Results <- &result
+func LogSuccess(logInfo *LogInfo, result string) {
+	logInfo.LogWG.Add(1)
+	logInfo.LogSucTime = time.Now().Unix()
+	logInfo.Results <- &result
 }
 
-func SaveLog() {
-	for result := range Results {
-		if !Silent {
-			if Nocolor {
+func SaveLog(info *ConfigInfo) {
+	for result := range info.LogInfo.Results {
+		if !info.LogInfo.Silent {
+			if info.LogInfo.Nocolor {
 				fmt.Println(*result)
 			} else {
 				if strings.HasPrefix(*result, "[+] InfoScan") {
@@ -54,13 +41,13 @@ func SaveLog() {
 			}
 		}
 		if IsSave {
-			WriteFile(*result, Outputfile)
+			WriteFile(*result, info.JsonOutput, info.Outputfile)
 		}
-		LogWG.Done()
+		info.LogInfo.LogWG.Done()
 	}
 }
 
-func WriteFile(result string, filename string) {
+func WriteFile(result string, JsonOutput bool, filename string) {
 	fl, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		fmt.Printf("Open %s error, %v\n", filename, err)
@@ -111,12 +98,12 @@ func WriteFile(result string, filename string) {
 	}
 }
 
-func LogError(errinfo interface{}) {
-	if WaitTime == 0 {
-		fmt.Printf("已完成 %v/%v %v \n", End, Num, errinfo)
-	} else if (time.Now().Unix()-LogSucTime) > WaitTime && (time.Now().Unix()-LogErrTime) > WaitTime {
-		fmt.Printf("已完成 %v/%v %v \n", End, Num, errinfo)
-		LogErrTime = time.Now().Unix()
+func LogError(logInfo *LogInfo, errinfo interface{}) {
+	if logInfo.WaitTime == 0 {
+		fmt.Printf("已完成 %v/%v %v \n", logInfo.End, logInfo.Num, errinfo)
+	} else if (time.Now().Unix()-logInfo.LogSucTime) > logInfo.WaitTime && (time.Now().Unix()-logInfo.LogErrTime) > logInfo.WaitTime {
+		fmt.Printf("已完成 %v/%v %v \n", logInfo.End, logInfo.Num, errinfo)
+		logInfo.LogErrTime = time.Now().Unix()
 	}
 }
 

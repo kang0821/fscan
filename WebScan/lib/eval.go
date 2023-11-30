@@ -93,7 +93,7 @@ type CustomLib struct {
 	programOptions []cel.ProgramOption
 }
 
-func NewEnvOption() CustomLib {
+func NewEnvOption(info *common.ConfigInfo) CustomLib {
 	c := CustomLib{}
 
 	c.envOptions = []cel.EnvOption{
@@ -427,7 +427,7 @@ func NewEnvOption() CustomLib {
 					if !ok {
 						return types.ValOrErr(rhs, "unexpected type '%v' passed to 'wait'", rhs.Type())
 					}
-					return types.Bool(reverseCheck(reverse, timeout))
+					return types.Bool(reverseCheck(info, reverse, timeout))
 				},
 			},
 			&functions.Overload{
@@ -562,8 +562,8 @@ func randomString(n int) string {
 	return RandomStr(randSource, charset, n)
 }
 
-func reverseCheck(r *Reverse, timeout int64) bool {
-	if ceyeApi == "" || r.Domain == "" || !common.DnsLog {
+func reverseCheck(info *common.ConfigInfo, r *Reverse, timeout int64) bool {
+	if ceyeApi == "" || r.Domain == "" || !info.DnsLog {
 		return false
 	}
 	time.Sleep(time.Second * time.Duration(timeout))
@@ -571,7 +571,7 @@ func reverseCheck(r *Reverse, timeout int64) bool {
 	urlStr := fmt.Sprintf("http://api.ceye.io/v1/records?token=%s&type=dns&filter=%s", ceyeApi, sub)
 	//fmt.Println(urlStr)
 	req, _ := http.NewRequest("GET", urlStr, nil)
-	resp, err := DoRequest(req, false)
+	resp, err := DoRequest(info, req, false)
 	if err != nil {
 		return false
 	}
@@ -605,7 +605,7 @@ func RandomStr(randSource *rand.Rand, letterBytes string, n int) string {
 	return string(randBytes)
 }
 
-func DoRequest(req *http.Request, redirect bool) (*Response, error) {
+func DoRequest(info *common.ConfigInfo, req *http.Request, redirect bool) (*Response, error) {
 	if req.Body == nil || req.Body == http.NoBody {
 	} else {
 		req.Header.Set("Content-Length", strconv.Itoa(int(req.ContentLength)))
@@ -627,7 +627,7 @@ func DoRequest(req *http.Request, redirect bool) (*Response, error) {
 	defer oResp.Body.Close()
 	resp, err := ParseResponse(oResp)
 	if err != nil {
-		common.LogError("[-] ParseResponse error: " + err.Error())
+		common.LogError(&info.LogInfo, "[-] ParseResponse error: "+err.Error())
 		//return nil, err
 	}
 	return resp, err

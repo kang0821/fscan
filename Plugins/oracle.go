@@ -9,25 +9,25 @@ import (
 	"time"
 )
 
-func OracleScan(info *common.HostInfo) (tmperr error) {
-	if common.IsBrute {
+func OracleScan(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) (tmperr error) {
+	if configInfo.IsBrute {
 		return
 	}
 	starttime := time.Now().Unix()
 	for _, user := range common.Userdict["oracle"] {
 		for _, pass := range common.Passwords {
 			pass = strings.Replace(pass, "{user}", user, -1)
-			flag, err := OracleConn(info, user, pass)
+			flag, err := OracleConn(configInfo, hostInfo, user, pass)
 			if flag == true && err == nil {
 				return err
 			} else {
-				errlog := fmt.Sprintf("[-] oracle %v:%v %v %v %v", info.Host, info.Ports, user, pass, err)
-				common.LogError(errlog)
+				errlog := fmt.Sprintf("[-] oracle %v:%v %v %v %v", hostInfo.Host, hostInfo.Ports, user, pass, err)
+				common.LogError(&configInfo.LogInfo, errlog)
 				tmperr = err
 				if common.CheckErrs(err) {
 					return err
 				}
-				if time.Now().Unix()-starttime > (int64(len(common.Userdict["oracle"])*len(common.Passwords)) * common.Timeout) {
+				if time.Now().Unix()-starttime > (int64(len(common.Userdict["oracle"])*len(common.Passwords)) * configInfo.Timeout) {
 					return err
 				}
 			}
@@ -36,20 +36,20 @@ func OracleScan(info *common.HostInfo) (tmperr error) {
 	return tmperr
 }
 
-func OracleConn(info *common.HostInfo, user string, pass string) (flag bool, err error) {
+func OracleConn(configInfo *common.ConfigInfo, hostInfo *common.HostInfo, user string, pass string) (flag bool, err error) {
 	flag = false
-	Host, Port, Username, Password := info.Host, info.Ports, user, pass
+	Host, Port, Username, Password := hostInfo.Host, hostInfo.Ports, user, pass
 	dataSourceName := fmt.Sprintf("oracle://%s:%s@%s:%s/orcl", Username, Password, Host, Port)
 	db, err := sql.Open("oracle", dataSourceName)
 	if err == nil {
-		db.SetConnMaxLifetime(time.Duration(common.Timeout) * time.Second)
-		db.SetConnMaxIdleTime(time.Duration(common.Timeout) * time.Second)
+		db.SetConnMaxLifetime(time.Duration(configInfo.Timeout) * time.Second)
+		db.SetConnMaxIdleTime(time.Duration(configInfo.Timeout) * time.Second)
 		db.SetMaxIdleConns(0)
 		defer db.Close()
 		err = db.Ping()
 		if err == nil {
 			result := fmt.Sprintf("[+] oracle %v:%v:%v %v", Host, Port, Username, Password)
-			common.LogSuccess(result)
+			common.LogSuccess(&configInfo.LogInfo, result)
 			flag = true
 		}
 	}

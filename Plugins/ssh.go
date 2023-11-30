@@ -11,29 +11,29 @@ import (
 	"time"
 )
 
-func SshScan(info *common.HostInfo) (tmperr error) {
-	if common.IsBrute {
+func SshScan(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) (tmperr error) {
+	if configInfo.IsBrute {
 		return
 	}
 	starttime := time.Now().Unix()
 	for _, user := range common.Userdict["ssh"] {
 		for _, pass := range common.Passwords {
 			pass = strings.Replace(pass, "{user}", user, -1)
-			flag, err := SshConn(info, user, pass)
+			flag, err := SshConn(configInfo, hostInfo, user, pass)
 			if flag == true && err == nil {
 				return err
 			} else {
-				errlog := fmt.Sprintf("[-] ssh %v:%v %v %v %v", info.Host, info.Ports, user, pass, err)
-				common.LogError(errlog)
+				errlog := fmt.Sprintf("[-] ssh %v:%v %v %v %v", hostInfo.Host, hostInfo.Ports, user, pass, err)
+				common.LogError(&configInfo.LogInfo, errlog)
 				tmperr = err
 				if common.CheckErrs(err) {
 					return err
 				}
-				if time.Now().Unix()-starttime > (int64(len(common.Userdict["ssh"])*len(common.Passwords)) * common.Timeout) {
+				if time.Now().Unix()-starttime > (int64(len(common.Userdict["ssh"])*len(common.Passwords)) * configInfo.Timeout) {
 					return err
 				}
 			}
-			if common.SshKey != "" {
+			if configInfo.SshKey != "" {
 				return err
 			}
 		}
@@ -41,12 +41,12 @@ func SshScan(info *common.HostInfo) (tmperr error) {
 	return tmperr
 }
 
-func SshConn(info *common.HostInfo, user string, pass string) (flag bool, err error) {
+func SshConn(configInfo *common.ConfigInfo, hostInfo *common.HostInfo, user string, pass string) (flag bool, err error) {
 	flag = false
-	Host, Port, Username, Password := info.Host, info.Ports, user, pass
+	Host, Port, Username, Password := hostInfo.Host, hostInfo.Ports, user, pass
 	var Auth []ssh.AuthMethod
-	if common.SshKey != "" {
-		pemBytes, err := ioutil.ReadFile(common.SshKey)
+	if configInfo.SshKey != "" {
+		pemBytes, err := ioutil.ReadFile(configInfo.SshKey)
 		if err != nil {
 			return false, errors.New("read key failed" + err.Error())
 		}
@@ -62,7 +62,7 @@ func SshConn(info *common.HostInfo, user string, pass string) (flag bool, err er
 	config := &ssh.ClientConfig{
 		User:    Username,
 		Auth:    Auth,
-		Timeout: time.Duration(common.Timeout) * time.Second,
+		Timeout: time.Duration(configInfo.Timeout) * time.Second,
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			return nil
 		},
@@ -76,19 +76,19 @@ func SshConn(info *common.HostInfo, user string, pass string) (flag bool, err er
 			defer session.Close()
 			flag = true
 			var result string
-			if common.Command != "" {
-				combo, _ := session.CombinedOutput(common.Command)
+			if configInfo.Command != "" {
+				combo, _ := session.CombinedOutput(configInfo.Command)
 				result = fmt.Sprintf("[+] SSH %v:%v:%v %v \n %v", Host, Port, Username, Password, string(combo))
-				if common.SshKey != "" {
+				if configInfo.SshKey != "" {
 					result = fmt.Sprintf("[+] SSH %v:%v sshkey correct \n %v", Host, Port, string(combo))
 				}
-				common.LogSuccess(result)
+				common.LogSuccess(&configInfo.LogInfo, result)
 			} else {
 				result = fmt.Sprintf("[+] SSH %v:%v:%v %v", Host, Port, Username, Password)
-				if common.SshKey != "" {
+				if configInfo.SshKey != "" {
 					result = fmt.Sprintf("[+] SSH %v:%v sshkey correct", Host, Port)
 				}
-				common.LogSuccess(result)
+				common.LogSuccess(&configInfo.LogInfo, result)
 			}
 		}
 	}

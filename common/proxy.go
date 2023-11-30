@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-func WrapperTcpWithTimeout(network, address string, timeout time.Duration) (net.Conn, error) {
+func WrapperTcpWithTimeout(Socks5Proxy, network, address string, timeout time.Duration) (net.Conn, error) {
 	d := &net.Dialer{Timeout: timeout}
-	return WrapperTCP(network, address, d)
+	return WrapperTCP(Socks5Proxy, network, address, d)
 }
 
-func WrapperTCP(network, address string, forward *net.Dialer) (net.Conn, error) {
+func WrapperTCP(Socks5Proxy, network, address string, forward *net.Dialer) (net.Conn, error) {
 	//get conn
 	var conn net.Conn
 	if Socks5Proxy == "" {
@@ -24,7 +24,7 @@ func WrapperTCP(network, address string, forward *net.Dialer) (net.Conn, error) 
 			return nil, err
 		}
 	} else {
-		dailer, err := Socks5Dailer(forward)
+		dailer, err := Socks5Dailer(Socks5Proxy, forward)
 		if err != nil {
 			return nil, err
 		}
@@ -37,7 +37,7 @@ func WrapperTCP(network, address string, forward *net.Dialer) (net.Conn, error) 
 
 }
 
-func Socks5Dailer(forward *net.Dialer) (proxy.Dialer, error) {
+func Socks5Dailer(Socks5Proxy string, forward *net.Dialer) (proxy.Dialer, error) {
 	u, err := url.Parse(Socks5Proxy)
 	if err != nil {
 		return nil, err

@@ -17,41 +17,42 @@ var Pocs embed.FS
 var once sync.Once
 var AllPocs []*lib.Poc
 
-func WebScan(info *common.HostInfo) {
-	once.Do(initpoc)
-	var pocinfo = common.Pocinfo
-	buf := strings.Split(info.Url, "/")
-	pocinfo.Target = strings.Join(buf[:3], "/")
+func WebScan(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) {
+	once.Do(func() {
+		initpoc(configInfo)
+	})
+	buf := strings.Split(hostInfo.Url, "/")
+	configInfo.Target = strings.Join(buf[:3], "/")
 
-	if pocinfo.PocName != "" {
-		Execute(pocinfo)
+	if configInfo.PocName != "" {
+		Execute(configInfo)
 	} else {
-		for _, infostr := range info.Infostr {
-			pocinfo.PocName = lib.CheckInfoPoc(infostr)
-			Execute(pocinfo)
+		for _, infostr := range hostInfo.Infostr {
+			configInfo.PocName = lib.CheckInfoPoc(infostr)
+			Execute(configInfo)
 		}
 	}
 }
 
-func Execute(PocInfo common.PocInfo) {
-	req, err := http.NewRequest("GET", PocInfo.Target, nil)
+func Execute(info *common.ConfigInfo) {
+	req, err := http.NewRequest("GET", info.Target, nil)
 	if err != nil {
-		errlog := fmt.Sprintf("[-] webpocinit %v %v", PocInfo.Target, err)
-		common.LogError(errlog)
+		errlog := fmt.Sprintf("[-] webpocinit %v %v", info.Target, err)
+		common.LogError(&info.LogInfo, errlog)
 		return
 	}
-	req.Header.Set("User-agent", common.UserAgent)
-	req.Header.Set("Accept", common.Accept)
+	req.Header.Set("User-agent", info.UserAgent)
+	req.Header.Set("Accept", info.Accept)
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9")
-	if common.Cookie != "" {
-		req.Header.Set("Cookie", common.Cookie)
+	if info.Cookie != "" {
+		req.Header.Set("Cookie", info.Cookie)
 	}
-	pocs := filterPoc(PocInfo.PocName)
-	lib.CheckMultiPoc(req, pocs, common.PocNum)
+	pocs := filterPoc(info.PocName)
+	lib.CheckMultiPoc(info, req, pocs)
 }
 
-func initpoc() {
-	if common.PocPath == "" {
+func initpoc(info *common.ConfigInfo) {
+	if info.PocPath == "" {
 		entries, err := Pocs.ReadDir("pocs")
 		if err != nil {
 			fmt.Printf("[-] init poc error: %v", err)
@@ -66,8 +67,8 @@ func initpoc() {
 			}
 		}
 	} else {
-		fmt.Println("[+] load poc from " + common.PocPath)
-		err := filepath.Walk(common.PocPath,
+		fmt.Println("[+] load poc from " + info.PocPath)
+		err := filepath.Walk(info.PocPath,
 			func(path string, info os.FileInfo, err error) error {
 				if err != nil || info == nil {
 					return err

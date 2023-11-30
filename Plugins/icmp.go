@@ -13,20 +13,23 @@ import (
 	"time"
 )
 
-var (
-	AliveHosts []string
-	ExistHosts = make(map[string]struct{})
-	livewg     sync.WaitGroup
-)
+//var (
+//AliveHosts []string
+//ExistHosts = make(map[string]struct{})
+//livewg     sync.WaitGroup
+//)
 
-func CheckLive(hostslist []string, Ping bool) []string {
+func CheckLive(configInfo *common.ConfigInfo, hostslist []string) []string {
+	var livewg = sync.WaitGroup{}
+	var AliveHosts []string
+	var ExistHosts = make(map[string]struct{})
 	chanHosts := make(chan string, len(hostslist))
 	go func() {
 		for ip := range chanHosts {
 			if _, ok := ExistHosts[ip]; !ok && IsContain(hostslist, ip) {
 				ExistHosts[ip] = struct{}{}
-				if common.Silent == false {
-					if Ping == false {
+				if configInfo.LogInfo.Silent == false {
+					if configInfo.Ping == false {
 						fmt.Printf("(icmp) Target %-15s is alive\n", ip)
 					} else {
 						fmt.Printf("(ping) Target %-15s is alive\n", ip)
@@ -38,16 +41,16 @@ func CheckLive(hostslist []string, Ping bool) []string {
 		}
 	}()
 
-	if Ping == true {
+	if configInfo.Ping == true {
 		//使用ping探测
-		RunPing(hostslist, chanHosts)
+		RunPing(&livewg, hostslist, chanHosts)
 	} else {
 		//优先尝试监听本地icmp,批量探测
 		conn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 		if err == nil {
-			RunIcmp1(hostslist, conn, chanHosts)
+			RunIcmp1(&livewg, AliveHosts, hostslist, conn, chanHosts)
 		} else {
-			common.LogError(err)
+			common.LogError(&configInfo.LogInfo, err)
 			//尝试无监听icmp探测
 			fmt.Println("trying RunIcmp2")
 			conn, err := net.DialTimeout("ip4:icmp", "127.0.0.1", 3*time.Second)
@@ -57,13 +60,13 @@ func CheckLive(hostslist []string, Ping bool) []string {
 				}
 			}()
 			if err == nil {
-				RunIcmp2(hostslist, chanHosts)
+				RunIcmp2(&livewg, hostslist, chanHosts)
 			} else {
-				common.LogError(err)
+				common.LogError(&configInfo.LogInfo, err)
 				//使用ping探测
 				fmt.Println("The current user permissions unable to send icmp packets")
 				fmt.Println("start ping")
-				RunPing(hostslist, chanHosts)
+				RunPing(&livewg, hostslist, chanHosts)
 			}
 		}
 	}
@@ -72,24 +75,24 @@ func CheckLive(hostslist []string, Ping bool) []string {
 	close(chanHosts)
 
 	if len(hostslist) > 1000 {
-		arrTop, arrLen := ArrayCountValueTop(AliveHosts, common.LiveTop, true)
+		arrTop, arrLen := ArrayCountValueTop(AliveHosts, configInfo.LiveTop, true)
 		for i := 0; i < len(arrTop); i++ {
 			output := fmt.Sprintf("[*] LiveTop %-16s 段存活数量为: %d", arrTop[i]+".0.0/16", arrLen[i])
-			common.LogSuccess(output)
+			common.LogSuccess(&configInfo.LogInfo, output)
 		}
 	}
 	if len(hostslist) > 256 {
-		arrTop, arrLen := ArrayCountValueTop(AliveHosts, common.LiveTop, false)
+		arrTop, arrLen := ArrayCountValueTop(AliveHosts, configInfo.LiveTop, false)
 		for i := 0; i < len(arrTop); i++ {
 			output := fmt.Sprintf("[*] LiveTop %-16s 段存活数量为: %d", arrTop[i]+".0/24", arrLen[i])
-			common.LogSuccess(output)
+			common.LogSuccess(&configInfo.LogInfo, output)
 		}
 	}
 
 	return AliveHosts
 }
 
-func RunIcmp1(hostslist []string, conn *icmp.PacketConn, chanHosts chan string) {
+func RunIcmp1(livewg *sync.WaitGroup, AliveHosts []string, hostslist []string, conn *icmp.PacketConn, chanHosts chan string) {
 	endflag := false
 	go func() {
 		for {
@@ -132,7 +135,7 @@ func RunIcmp1(hostslist []string, conn *icmp.PacketConn, chanHosts chan string) 
 	conn.Close()
 }
 
-func RunIcmp2(hostslist []string, chanHosts chan string) {
+func RunIcmp2(livewg *sync.WaitGroup, hostslist []string, chanHosts chan string) {
 	num := 1000
 	if len(hostslist) < num {
 		num = len(hostslist)
@@ -178,7 +181,7 @@ func icmpalive(host string) bool {
 	return true
 }
 
-func RunPing(hostslist []string, chanHosts chan string) {
+func RunPing(livewg *sync.WaitGroup, hostslist []string, chanHosts chan string) {
 	var wg sync.WaitGroup
 	limiter := make(chan struct{}, 50)
 	for _, host := range hostslist {

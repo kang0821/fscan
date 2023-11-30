@@ -25,16 +25,16 @@ type Task struct {
 	Poc *Poc
 }
 
-func CheckMultiPoc(req *http.Request, pocs []*Poc, workers int) {
+func CheckMultiPoc(info *common.ConfigInfo, req *http.Request, pocs []*Poc) {
 	tasks := make(chan Task)
 	var wg sync.WaitGroup
-	for i := 0; i < workers; i++ {
+	for i := 0; i < info.PocNum; i++ {
 		go func() {
 			for task := range tasks {
-				isVul, _, name := executePoc(task.Req, task.Poc)
+				isVul, _, name := executePoc(info, task.Req, task.Poc)
 				if isVul {
 					result := fmt.Sprintf("[+] PocScan %s %s %s", task.Req.URL, task.Poc.Name, name)
-					common.LogSuccess(result)
+					common.LogSuccess(&info.LogInfo, result)
 				}
 				wg.Done()
 			}
@@ -52,8 +52,8 @@ func CheckMultiPoc(req *http.Request, pocs []*Poc, workers int) {
 	close(tasks)
 }
 
-func executePoc(oReq *http.Request, p *Poc) (bool, error, string) {
-	c := NewEnvOption()
+func executePoc(info *common.ConfigInfo, oReq *http.Request, p *Poc) (bool, error, string) {
+	c := NewEnvOption(info)
 	c.UpdateCompileOptions(p.Set)
 	if len(p.Sets) > 0 {
 		var setMap StrMap
@@ -82,10 +82,10 @@ func executePoc(oReq *http.Request, p *Poc) (bool, error, string) {
 	for _, item := range p.Set {
 		k, expression := item.Key, item.Value
 		if expression == "newReverse()" {
-			if !common.DnsLog {
+			if !info.DnsLog {
 				return false, nil, ""
 			}
-			variableMap[k] = newReverse()
+			variableMap[k] = newReverse(info)
 			continue
 		}
 		err, _ = evalset(env, variableMap, k, expression)
@@ -96,7 +96,7 @@ func executePoc(oReq *http.Request, p *Poc) (bool, error, string) {
 	success := false
 	//爆破模式,比如tomcat弱口令
 	if len(p.Sets) > 0 {
-		success, err = clusterpoc(oReq, p, variableMap, req, env)
+		success, err = clusterpoc(info, oReq, p, variableMap, req, env)
 		return success, nil, ""
 	}
 
@@ -140,7 +140,7 @@ func executePoc(oReq *http.Request, p *Poc) (bool, error, string) {
 			newRequest.Header.Set(k, v)
 		}
 		Headers = nil
-		resp, err := DoRequest(newRequest, rule.FollowRedirects)
+		resp, err := DoRequest(info, newRequest, rule.FollowRedirects)
 		newRequest = nil
 		if err != nil {
 			return false, err
@@ -239,8 +239,8 @@ func optimizeCookies(rawCookie string) (output string) {
 	return
 }
 
-func newReverse() *Reverse {
-	if !common.DnsLog {
+func newReverse(info *common.ConfigInfo) *Reverse {
+	if !info.DnsLog {
 		return &Reverse{}
 	}
 	letters := "1234567890abcdefghijklmnopqrstuvwxyz"
@@ -260,12 +260,12 @@ func newReverse() *Reverse {
 	}
 }
 
-func clusterpoc(oReq *http.Request, p *Poc, variableMap map[string]interface{}, req *Request, env *cel.Env) (success bool, err error) {
+func clusterpoc(info *common.ConfigInfo, oReq *http.Request, p *Poc, variableMap map[string]interface{}, req *Request, env *cel.Env) (success bool, err error) {
 	var strMap StrMap
 	var tmpnum int
 	for i, rule := range p.Rules {
 		if !isFuzz(rule, p.Sets) {
-			success, err = clustersend(oReq, variableMap, req, env, rule)
+			success, err = clustersend(info, oReq, variableMap, req, env, rule)
 			if err != nil {
 				return false, err
 			}
@@ -280,7 +280,7 @@ func clusterpoc(oReq *http.Request, p *Poc, variableMap map[string]interface{}, 
 	look:
 		for j, item := range setsMap {
 			//shiro默认只跑10key
-			if p.Name == "poc-yaml-shiro-key" && !common.PocFull && j >= 10 {
+			if p.Name == "poc-yaml-shiro-key" && !info.PocFull && j >= 10 {
 				if item[1] == "cbc" {
 					continue
 				} else {
@@ -349,22 +349,22 @@ func clusterpoc(oReq *http.Request, p *Poc, variableMap map[string]interface{}, 
 				continue
 			}
 			ruleHash[md5str] = struct{}{}
-			success, err = clustersend(oReq, variableMap, req, env, rule1)
+			success, err = clustersend(info, oReq, variableMap, req, env, rule1)
 			if err != nil {
 				return false, err
 			}
 			if success {
 				if rule.Continue {
 					if p.Name == "poc-yaml-backup-file" || p.Name == "poc-yaml-sql-file" {
-						common.LogSuccess(fmt.Sprintf("[+] PocScan %s://%s%s %s", req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name))
+						common.LogSuccess(&info.LogInfo, fmt.Sprintf("[+] PocScan %s://%s%s %s", req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name))
 					} else {
-						common.LogSuccess(fmt.Sprintf("[+] PocScan %s://%s%s %s %v", req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name, tmpMap))
+						common.LogSuccess(&info.LogInfo, fmt.Sprintf("[+] PocScan %s://%s%s %s %v", req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name, tmpMap))
 					}
 					continue
 				}
 				strMap = append(strMap, tmpMap...)
 				if i == len(p.Rules)-1 {
-					common.LogSuccess(fmt.Sprintf("[+] PocScan %s://%s%s %s %v", req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name, strMap))
+					common.LogSuccess(&info.LogInfo, fmt.Sprintf("[+] PocScan %s://%s%s %s %v", req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name, strMap))
 					//防止后续继续打印poc成功信息
 					return false, nil
 				}
@@ -421,7 +421,7 @@ func MakeData(base [][]string, nextData []string) (output [][]string) {
 	return
 }
 
-func clustersend(oReq *http.Request, variableMap map[string]interface{}, req *Request, env *cel.Env, rule Rules) (bool, error) {
+func clustersend(info *common.ConfigInfo, oReq *http.Request, variableMap map[string]interface{}, req *Request, env *cel.Env, rule Rules) (bool, error) {
 	for k1, v1 := range variableMap {
 		_, isMap := v1.(map[string]string)
 		if isMap {
@@ -454,7 +454,7 @@ func clustersend(oReq *http.Request, variableMap map[string]interface{}, req *Re
 	for k, v := range rule.Headers {
 		newRequest.Header.Set(k, v)
 	}
-	resp, err := DoRequest(newRequest, rule.FollowRedirects)
+	resp, err := DoRequest(info, newRequest, rule.FollowRedirects)
 	newRequest = nil
 	if err != nil {
 		return false, err

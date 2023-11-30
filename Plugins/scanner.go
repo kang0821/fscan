@@ -10,45 +10,47 @@ import (
 	"sync"
 )
 
-func Scan(info common.HostInfo) {
+func Scan(configInfo *common.ConfigInfo, hostInfo common.HostInfo) {
 	fmt.Println("start infoscan")
-	Hosts, err := common.ParseIP(info.Host, common.HostFile, common.NoHosts)
+	Hosts, err := common.ParseIP(configInfo, &hostInfo)
 	if err != nil {
-		fmt.Println("len(hosts)==0", err)
-		return
+		panic(err)
 	}
-	lib.Inithttp()
-	var ch = make(chan struct{}, common.Threads)
+	err = lib.Inithttp(configInfo)
+	if err != nil {
+		panic(err)
+	}
+	var ch = make(chan struct{}, configInfo.Threads)
 	var wg = sync.WaitGroup{}
 	web := strconv.Itoa(common.PORTList["web"])
 	ms17010 := strconv.Itoa(common.PORTList["ms17010"])
-	if len(Hosts) > 0 || len(common.HostPort) > 0 {
-		if common.NoPing == false && len(Hosts) > 1 || common.Scantype == "icmp" {
-			Hosts = CheckLive(Hosts, common.Ping)
+	if len(Hosts) > 0 || len(configInfo.HostPort) > 0 {
+		if configInfo.NoPing == false && len(Hosts) > 1 || configInfo.Scantype == "icmp" {
+			Hosts = CheckLive(configInfo, Hosts)
 			fmt.Println("[*] Icmp alive hosts len is:", len(Hosts))
 		}
-		if common.Scantype == "icmp" {
-			common.LogWG.Wait()
+		if configInfo.Scantype == "icmp" {
+			configInfo.LogInfo.LogWG.Wait()
 			return
 		}
 		var AlivePorts []string
-		if common.Scantype == "webonly" || common.Scantype == "webpoc" {
-			AlivePorts = NoPortScan(Hosts, common.Ports)
-		} else if common.Scantype == "hostname" {
-			common.Ports = "139"
-			AlivePorts = NoPortScan(Hosts, common.Ports)
+		if configInfo.Scantype == "webonly" || configInfo.Scantype == "webpoc" {
+			AlivePorts = NoPortScan(Hosts, configInfo.WebPorts, configInfo.NoPorts)
+		} else if configInfo.Scantype == "hostname" {
+			configInfo.WebPorts = "139"
+			AlivePorts = NoPortScan(Hosts, configInfo.WebPorts, configInfo.NoPorts)
 		} else if len(Hosts) > 0 {
-			AlivePorts = PortScan(Hosts, common.Ports, common.Timeout)
+			AlivePorts = PortScan(Hosts, configInfo)
 			fmt.Println("[*] alive ports len is:", len(AlivePorts))
-			if common.Scantype == "portscan" {
-				common.LogWG.Wait()
+			if configInfo.Scantype == "portscan" {
+				configInfo.LogInfo.LogWG.Wait()
 				return
 			}
 		}
-		if len(common.HostPort) > 0 {
-			AlivePorts = append(AlivePorts, common.HostPort...)
+		if len(configInfo.HostPort) > 0 {
+			AlivePorts = append(AlivePorts, configInfo.HostPort...)
 			AlivePorts = common.RemoveDuplicate(AlivePorts)
-			common.HostPort = nil
+			configInfo.HostPort = nil
 			fmt.Println("[*] AlivePorts len is:", len(AlivePorts))
 		}
 		var severports []string //severports := []string{"21","22","135"."445","1433","3306","5432","6379","9200","11211","27017"...}
@@ -57,63 +59,63 @@ func Scan(info common.HostInfo) {
 		}
 		fmt.Println("start vulscan")
 		for _, targetIP := range AlivePorts {
-			info.Host, info.Ports = strings.Split(targetIP, ":")[0], strings.Split(targetIP, ":")[1]
-			if common.Scantype == "all" || common.Scantype == "main" {
+			hostInfo.Host, hostInfo.Ports = strings.Split(targetIP, ":")[0], strings.Split(targetIP, ":")[1]
+			if configInfo.Scantype == "all" || configInfo.Scantype == "main" {
 				switch {
-				case info.Ports == "135":
-					AddScan(info.Ports, info, &ch, &wg) //findnet
-					if common.IsWmi {
-						AddScan("1000005", info, &ch, &wg) //wmiexec
+				case hostInfo.Ports == "135":
+					AddScan(hostInfo.Ports, configInfo, hostInfo, &ch, &wg) //findnet
+					if configInfo.IsWmi {
+						AddScan("1000005", configInfo, hostInfo, &ch, &wg) //wmiexec
 					}
-				case info.Ports == "445":
-					AddScan(ms17010, info, &ch, &wg) //ms17010
-					//AddScan(info.Ports, info, ch, &wg)  //smb
-					//AddScan("1000002", info, ch, &wg) //smbghost
-				case info.Ports == "9000":
-					AddScan(web, info, &ch, &wg)        //http
-					AddScan(info.Ports, info, &ch, &wg) //fcgiscan
-				case IsContain(severports, info.Ports):
-					AddScan(info.Ports, info, &ch, &wg) //plugins scan
+				case hostInfo.Ports == "445":
+					AddScan(ms17010, configInfo, hostInfo, &ch, &wg) //ms17010
+					//AddScan(configInfo.WebPorts, configInfo, ch, &wg)  //smb
+					//AddScan("1000002", configInfo, ch, &wg) //smbghost
+				case hostInfo.Ports == "9000":
+					AddScan(web, configInfo, hostInfo, &ch, &wg)            //http
+					AddScan(hostInfo.Ports, configInfo, hostInfo, &ch, &wg) //fcgiscan
+				case IsContain(severports, hostInfo.Ports):
+					AddScan(hostInfo.Ports, configInfo, hostInfo, &ch, &wg) //plugins scan
 				default:
-					AddScan(web, info, &ch, &wg) //webtitle
+					AddScan(web, configInfo, hostInfo, &ch, &wg) //webtitle
 				}
 			} else {
-				scantype := strconv.Itoa(common.PORTList[common.Scantype])
-				AddScan(scantype, info, &ch, &wg)
+				scantype := strconv.Itoa(common.PORTList[configInfo.Scantype])
+				AddScan(scantype, configInfo, hostInfo, &ch, &wg)
 			}
 		}
 	}
-	for _, url := range common.Urls {
-		info.Url = url
-		AddScan(web, info, &ch, &wg)
+	for _, url := range configInfo.Urls {
+		hostInfo.Url = url
+		AddScan(web, configInfo, hostInfo, &ch, &wg)
 	}
 	wg.Wait()
-	common.LogWG.Wait()
-	close(common.Results)
-	fmt.Printf("已完成 %v/%v\n", common.End, common.Num)
+	configInfo.LogInfo.LogWG.Wait()
+	close(configInfo.LogInfo.Results)
+	fmt.Printf("已完成 %v/%v\n", configInfo.LogInfo.End, configInfo.LogInfo.Num)
 }
 
 var Mutex = &sync.Mutex{}
 
-func AddScan(scantype string, info common.HostInfo, ch *chan struct{}, wg *sync.WaitGroup) {
+func AddScan(scantype string, configInfo *common.ConfigInfo, hostInfo common.HostInfo, ch *chan struct{}, wg *sync.WaitGroup) {
 	*ch <- struct{}{}
 	wg.Add(1)
 	go func() {
 		Mutex.Lock()
-		common.Num += 1
+		configInfo.LogInfo.Num += 1
 		Mutex.Unlock()
-		ScanFunc(&scantype, &info)
+		ScanFunc(&scantype, configInfo, &hostInfo)
 		Mutex.Lock()
-		common.End += 1
+		configInfo.LogInfo.End += 1
 		Mutex.Unlock()
 		wg.Done()
 		<-*ch
 	}()
 }
 
-func ScanFunc(name *string, info *common.HostInfo) {
+func ScanFunc(name *string, configInfo *common.ConfigInfo, hostInfo *common.HostInfo) {
 	f := reflect.ValueOf(PluginList[*name])
-	in := []reflect.Value{reflect.ValueOf(info)}
+	in := []reflect.Value{reflect.ValueOf(configInfo), reflect.ValueOf(hostInfo)}
 	f.Call(in)
 }
 

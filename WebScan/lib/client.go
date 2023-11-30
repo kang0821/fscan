@@ -10,7 +10,6 @@ import (
 	"golang.org/x/net/proxy"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -25,21 +24,18 @@ var (
 	keepAlive        = 5 * time.Second
 )
 
-func Inithttp() {
+func Inithttp(info *common.ConfigInfo) error {
 	//common.Proxy = "http://127.0.0.1:8080"
-	if common.PocNum == 0 {
-		common.PocNum = 20
+	if info.PocNum == 0 {
+		info.PocNum = 20
 	}
-	if common.WebTimeout == 0 {
-		common.WebTimeout = 5
+	if info.WebTimeout == 0 {
+		info.WebTimeout = 5
 	}
-	err := InitHttpClient(common.PocNum, common.Proxy, time.Duration(common.WebTimeout)*time.Second)
-	if err != nil {
-		log.Fatal(err)
-	}
+	return InitHttpClient(info, time.Duration(info.WebTimeout)*time.Second)
 }
 
-func InitHttpClient(ThreadsNum int, DownProxy string, Timeout time.Duration) error {
+func InitHttpClient(info *common.ConfigInfo, Timeout time.Duration) error {
 	type DialContext = func(ctx context.Context, network, addr string) (net.Conn, error)
 	dialer := &net.Dialer{
 		Timeout:   dialTimout,
@@ -50,15 +46,15 @@ func InitHttpClient(ThreadsNum int, DownProxy string, Timeout time.Duration) err
 		DialContext:         dialer.DialContext,
 		MaxConnsPerHost:     5,
 		MaxIdleConns:        0,
-		MaxIdleConnsPerHost: ThreadsNum * 2,
+		MaxIdleConnsPerHost: info.PocNum * 2,
 		IdleConnTimeout:     keepAlive,
 		TLSClientConfig:     &tls.Config{MinVersion: tls.VersionTLS10, InsecureSkipVerify: true},
 		TLSHandshakeTimeout: 5 * time.Second,
 		DisableKeepAlives:   false,
 	}
 
-	if common.Socks5Proxy != "" {
-		dialSocksProxy, err := common.Socks5Dailer(dialer)
+	if info.Socks5Proxy != "" {
+		dialSocksProxy, err := common.Socks5Dailer(info.Socks5Proxy, dialer)
 		if err != nil {
 			return err
 		}
@@ -67,18 +63,18 @@ func InitHttpClient(ThreadsNum int, DownProxy string, Timeout time.Duration) err
 		} else {
 			return errors.New("Failed type assertion to DialContext")
 		}
-	} else if DownProxy != "" {
-		if DownProxy == "1" {
-			DownProxy = "http://127.0.0.1:8080"
-		} else if DownProxy == "2" {
-			DownProxy = "socks5://127.0.0.1:1080"
-		} else if !strings.Contains(DownProxy, "://") {
-			DownProxy = "http://127.0.0.1:" + DownProxy
+	} else if info.Proxy != "" {
+		if info.Proxy == "1" {
+			info.Proxy = "http://127.0.0.1:8080"
+		} else if info.Proxy == "2" {
+			info.Proxy = "socks5://127.0.0.1:1080"
+		} else if !strings.Contains(info.Proxy, "://") {
+			info.Proxy = "http://127.0.0.1:" + info.Proxy
 		}
-		if !strings.HasPrefix(DownProxy, "socks") && !strings.HasPrefix(DownProxy, "http") {
+		if !strings.HasPrefix(info.Proxy, "socks") && !strings.HasPrefix(info.Proxy, "http") {
 			return errors.New("no support this proxy")
 		}
-		u, err := url.Parse(DownProxy)
+		u, err := url.Parse(info.Proxy)
 		if err != nil {
 			return err
 		}

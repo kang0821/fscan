@@ -1,0 +1,40 @@
+port: 12100
+
+scan:
+  # 漏洞模板同步策略（ONCE < INTERVAL < ALWAYS， 后一个总是包含前面所有的策略。如配置ALWAYS时，则会同时启用全部三种策略）
+  # ONCE:       启动时同步
+  # INTERVAL:   定时同步
+  # ALWAYS:     实时同步
+  templateSyncStrategy: ONCE
+  templateSyncCron: aaa
+
+minio:
+  endpoint: 10.0.120.111:9800
+  accessKeyID: root
+  secretAccessKey: tairuo1234
+  secure: false
+  bucket: hrfile
+  path: flawScan/upload/
+  fileUrlPrefix: http://trstage.zqfae.com/hrfile/flawScan/upload/
+
+
+redis:
+  nodes:
+    - 10.0.12.230:6001
+    - 10.0.12.230:6002
+    - 10.0.12.230:6003
+    - 10.0.12.230:6004
+    - 10.0.12.230:6005
+    - 10.0.12.230:6006
+  password: terra123
+  db: 0
+
+
+mysql:
+  host: 10.1.10.60
+  port: 3306
+  database: ns_imp
+  user: root
+  password: 123456
+  maxOpenConns: 10
+  maxIdleConns: 2

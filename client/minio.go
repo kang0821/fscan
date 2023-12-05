@@ -2,20 +2,23 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/shadow1ng/fscan/common"
 	"github.com/shadow1ng/fscan/config"
+	"github.com/tomatome/grdp/glog"
 	"log"
 	"path/filepath"
 )
 
-var minioClient *minio.Client
+type MinioContext struct {
+	MinioClient *minio.Client
+}
 
 func InitMinio(minioConfig config.Minio) {
 	var err error
-	minioClient, _ = minio.New(minioConfig.Endpoint, &minio.Options{
+	common.Context.Minio.MinioClient, err = minio.New(minioConfig.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(minioConfig.AccessKeyID, minioConfig.SecretAccessKey, ""),
 		Secure: false,
 	})
@@ -25,12 +28,12 @@ func InitMinio(minioConfig config.Minio) {
 }
 
 // Upload	上传文件到minio
-func Upload(fileFullName string) (string, error) {
+func (minioContext *MinioContext) Upload(fileFullName string) (string, error) {
 	minioConfig := config.Config.Minio
 	fileName := GenerateId() + "_" + filepath.Base(fileFullName)
-	_, err := minioClient.FPutObject(context.Background(), minioConfig.Bucket, minioConfig.Path+fileName, fileFullName, minio.PutObjectOptions{})
+	_, err := minioContext.MinioClient.FPutObject(context.Background(), minioConfig.Bucket, minioConfig.Path+fileName, fileFullName, minio.PutObjectOptions{})
 	if err != nil {
-		fmt.Printf("文件上传失败 %s\n", fileFullName)
+		glog.Errorf("文件上传失败 %s\n", fileFullName)
 		return "", err
 	}
 	return minioConfig.FileUrlPrefix + fileName, nil

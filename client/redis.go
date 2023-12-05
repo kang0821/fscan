@@ -3,63 +3,86 @@ package client
 import (
 	"context"
 	"github.com/redis/go-redis/v9"
+	"github.com/shadow1ng/fscan/common"
 	"github.com/shadow1ng/fscan/config"
 	"github.com/tomatome/grdp/glog"
-	"log"
-	"os"
 	"time"
 )
 
-var (
-	client *redis.ClusterClient
-)
+type RedisContext struct {
+	RedisClient *redis.ClusterClient
+}
 
 func InitRedis(redisConfig config.Redis) {
-	glog.SetLevel(glog.INFO)
-	logger := log.New(os.Stdout, "", 0)
-	glog.SetLogger(logger)
-
-	client = redis.NewClusterClient(&redis.ClusterOptions{
-		//Addrs:    []string{"10.0.12.230:6001", "10.0.12.230:6002", "10.0.12.230:6003", "10.0.12.230:6004", "10.0.12.230:6005", "10.0.12.230:6006"},
+	//glog.SetLevel(glog.INFO)
+	//logger := log.New(os.Stdout, "", 0)
+	//glog.SetLogger(logger)
+	common.Context.Redis.RedisClient = redis.NewClusterClient(&redis.ClusterOptions{
 		Addrs:    redisConfig.Nodes,
 		Password: redisConfig.Password,
 	})
 }
 
-func Tets() string {
-	SetKey("aaa", "123", nil)
-	asd, _ := GetKey("aaa")
-	println("asdasdas: ", asd)
-	return asd
-}
-
-func SetKey(k, v string, ex interface{}) (bool, error) {
+func (redisContext *RedisContext) SetKey(k, v string, ex interface{}) (bool, error) {
 	ctx := context.Background()
-	var resp string
-	var err error
-	if ex != nil {
-		resp, err = client.Set(ctx, k, v, time.Duration(ex.(int))*time.Second).Result()
-	} else {
-		resp, err = client.Set(ctx, k, v, time.Duration(0)*time.Second).Result()
-	}
+	_, err := redisContext.RedisClient.Set(ctx, k, v, getExpire(ex)).Result()
 	if err != nil {
 		glog.Errorf("redis set %s nx error : %s", k, err.Error())
-		return false, err
-	}
-	if resp != "OK" {
-		glog.Warn("redis of key %s set resp %s.", k, resp)
 		return false, err
 	}
 	return true, nil
 }
 
-func GetKey(k string) (string, error) {
-	resp, err := client.Get(context.Background(), k).Result()
+func (redisContext *RedisContext) GetKey(k string) (string, error) {
+	resp, err := redisContext.RedisClient.Get(context.Background(), k).Result()
 	if err != nil {
-		glog.Errorf("redis get %s nx error : %s", k, err.Error())
+		glog.Errorf("redis GetKey %s nx error : %s", k, err.Error())
 		return "", err
 	}
 	return resp, nil
+}
+
+func (redisContext *RedisContext) HGetAll(k string) (map[string]string, error) {
+	resp, err := redisContext.RedisClient.HGetAll(context.Background(), k).Result()
+	if err != nil {
+		glog.Errorf("redis HGetAll %s error : %s", k, err.Error())
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (redisContext *RedisContext) HExists(k, v string) (bool, error) {
+	_, err := redisContext.RedisClient.HExists(context.Background(), k, v).Result()
+	if err != nil {
+		glog.Errorf("redis HExists %s error : %s", k, err.Error())
+		return false, err
+	}
+	return true, nil
+}
+
+func (redisContext *RedisContext) SAdd(k, v string) (bool, error) {
+	_, err := redisContext.RedisClient.SAdd(context.Background(), k, v).Result()
+	if err != nil {
+		glog.Errorf("redis SAdd %s error : %s", k, err.Error())
+		return false, err
+	}
+	return true, nil
+}
+
+func (redisContext *RedisContext) Del(keys ...string) (bool, error) {
+	_, err := redisContext.RedisClient.Del(context.Background(), keys...).Result()
+	if err != nil {
+		glog.Errorf("redis Del %s error : %s", keys, err.Error())
+		return false, err
+	}
+	return true, nil
+}
+
+func getExpire(ex interface{}) time.Duration {
+	if ex == nil {
+		return time.Duration(0) * time.Second
+	}
+	return time.Duration(ex.(int)) * time.Second
 }
 
 //

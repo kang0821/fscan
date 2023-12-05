@@ -2,8 +2,10 @@ package Plugins
 
 import (
 	"fmt"
+	"github.com/shadow1ng/fscan/WebScan"
 	"github.com/shadow1ng/fscan/WebScan/lib"
 	"github.com/shadow1ng/fscan/common"
+	"github.com/tomatome/grdp/glog"
 	"reflect"
 	"strconv"
 	"strings"
@@ -11,7 +13,8 @@ import (
 )
 
 func Scan(configInfo *common.ConfigInfo, hostInfo common.HostInfo) {
-	fmt.Println("start infoscan")
+	glog.Info("start infoscan")
+	WebScan.SyncDirtyPocs()
 	Hosts, err := common.ParseIP(configInfo, &hostInfo)
 	if err != nil {
 		panic(err)

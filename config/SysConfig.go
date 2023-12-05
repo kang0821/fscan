@@ -12,7 +12,7 @@ type SysConfig struct {
 
 type Scan struct {
 	// 漏洞模板同步策略（ONCE启动时同步 < INTERVAL定时同步 < ALWAYS实时同步， 后一个总是包含前面所有的策略。如配置ALWAYS时，则会同时启用全部三种策略）
-	templateSyncStrategy string
+	TemplateSyncStrategy TemplateSyncStrategy
 }
 
 type Minio struct {
@@ -40,3 +40,11 @@ type Mysql struct {
 	MaxOpenConns int    `yaml:"maxOpenConns"`
 	MaxIdleConns int    `yaml:"maxIdleConns"`
 }
+
+type TemplateSyncStrategy string
+
+const (
+	ONCE     TemplateSyncStrategy = "ONCE"
+	INTERVAL TemplateSyncStrategy = "INTERVAL"
+	ALWAYS   TemplateSyncStrategy = "ALWAYS"
+)

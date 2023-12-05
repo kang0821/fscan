@@ -94,6 +94,7 @@ func InitHttpClient(info *common.ConfigInfo, Timeout time.Duration) error {
 }
 
 type Poc struct {
+	Code   string
 	Name   string  `yaml:"name"`
 	Set    StrMap  `yaml:"set"`
 	Sets   ListMap `yaml:"sets"`
@@ -199,17 +200,17 @@ type Detail struct {
 	Version     string   `yaml:"version"`
 }
 
-func LoadMultiPoc(Pocs embed.FS, pocname string) []*Poc {
-	var pocs []*Poc
-	for _, f := range SelectPoc(Pocs, pocname) {
-		if p, err := LoadPoc(f, Pocs); err == nil {
-			pocs = append(pocs, p)
-		} else {
-			fmt.Println("[-] load poc ", f, " error:", err)
-		}
-	}
-	return pocs
-}
+//func LoadMultiPoc(Pocs embed.FS, pocname string) []*Poc {
+//	var pocs []*Poc
+//	for _, f := range SelectPoc(Pocs, pocname) {
+//		if p, err := LoadPoc(f, Pocs); err == nil {
+//			pocs = append(pocs, p)
+//		} else {
+//			fmt.Println("[-] load poc ", f, " error:", err)
+//		}
+//	}
+//	return pocs
+//}
 
 func LoadPoc(fileName string, Pocs embed.FS) (*Poc, error) {
 	p := &Poc{}

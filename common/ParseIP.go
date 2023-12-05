@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/tomatome/grdp/glog"
 	"math/rand"
 	"net"
 	"os"
@@ -269,4 +270,19 @@ func RandInt(min, max int) int {
 		return max
 	}
 	return rand.Intn(max-min) + min
+}
+
+func GetIP() (ip string) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		glog.Warn("获取本机IP失败：%s", err.Error())
+		return
+	}
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+			return ipnet.IP.String()
+		}
+	}
+	glog.Warn("解析本机IP失败")
+	return "127.0.0.1"
 }

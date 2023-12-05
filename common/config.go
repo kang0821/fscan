@@ -80,35 +80,36 @@ type HostInfo struct {
 }
 
 type ConfigInfo struct {
-	BizId       string `binding:"required"` // 业务系统的任务ID
-	NotifyUrl   string `binding:"required"` // 业务系统的任务ID
-	JsonOutput  bool
-	Outputfile  string `binding:"required"`
-	Target      string
-	PocName     string
-	WebPorts    string
-	Path        string
-	Scantype    string
-	Command     string
-	SshKey      string
-	Domain      string
-	Username    string
-	Password    string
-	Proxy       string
-	Timeout     int64 // = 3
-	WebTimeout  int64 // = 5
-	TmpSave     bool
-	NoPing      bool
-	Ping        bool
-	NoPoc       bool
-	IsBrute     bool
-	RedisFile   string
-	RedisShell  string
-	Userfile    string
-	Passfile    string
-	HostFile    string
-	PortFile    string
-	PocPath     string
+	TaskId     string `binding:"required"` // 业务系统的任务ID
+	RecordId   string `binding:"required"` // 业务系统的任务执行记录ID
+	NotifyUrl  string `binding:"required"` // 业务系统的扫描通知地址
+	JsonOutput bool
+	Outputfile string `binding:"required"`
+	Target     string
+	PocName    string
+	WebPorts   string
+	Path       string
+	Scantype   string
+	Command    string
+	SshKey     string
+	Domain     string
+	Username   string
+	Password   string
+	Proxy      string
+	Timeout    int64 // = 3
+	WebTimeout int64 // = 5
+	TmpSave    bool
+	NoPing     bool
+	Ping       bool
+	NoPoc      bool
+	IsBrute    bool
+	RedisFile  string
+	RedisShell string
+	Userfile   string
+	Passfile   string
+	HostFile   string
+	PortFile   string
+	//PocPath     string
 	Threads     int
 	URL         string
 	UrlFile     string

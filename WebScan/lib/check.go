@@ -25,7 +25,7 @@ type Task struct {
 	Poc *Poc
 }
 
-func CheckMultiPoc(info *common.ConfigInfo, req *http.Request, pocs []*Poc) {
+func CheckMultiPoc(info *common.ConfigInfo, req *http.Request, pocs map[string]*Poc) {
 	tasks := make(chan Task)
 	var wg sync.WaitGroup
 	for i := 0; i < info.PocNum; i++ {

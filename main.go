@@ -17,7 +17,7 @@ func main() {
 	glog.SetLevel(glog.INFO)
 	glog.SetLogger(log.New(os.Stdout, "", 0))
 
-	util.CreateYamlFactory("config.yml", &config.Config)
+	util.CreateYamlFactory("./config/config.yml", &config.Config)
 	client.InitMinio(config.Config.Minio)
 	client.InitRedis(config.Config.Redis)
 	client.InitMysql(config.Config.Mysql)

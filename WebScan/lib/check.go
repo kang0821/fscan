@@ -33,7 +33,7 @@ func CheckMultiPoc(info *common.ConfigInfo, req *http.Request, pocs map[string]*
 			for task := range tasks {
 				isVul, _, name := executePoc(info, task.Req, task.Poc)
 				if isVul {
-					result := fmt.Sprintf("[+] PocScan %s %s %s", task.Req.URL, task.Poc.Name, name)
+					result := fmt.Sprintf("[+] PocScan[%s] %s %s %s", task.Poc.Code, task.Req.URL, task.Poc.Name, name)
 					common.LogSuccess(&info.LogInfo, result)
 				}
 				wg.Done()
@@ -356,15 +356,15 @@ func clusterpoc(info *common.ConfigInfo, oReq *http.Request, p *Poc, variableMap
 			if success {
 				if rule.Continue {
 					if p.Name == "poc-yaml-backup-file" || p.Name == "poc-yaml-sql-file" {
-						common.LogSuccess(&info.LogInfo, fmt.Sprintf("[+] PocScan %s://%s%s %s", req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name))
+						common.LogSuccess(&info.LogInfo, fmt.Sprintf("[+] PocScan[%s] %s://%s%s %s", p.Code, req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name))
 					} else {
-						common.LogSuccess(&info.LogInfo, fmt.Sprintf("[+] PocScan %s://%s%s %s %v", req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name, tmpMap))
+						common.LogSuccess(&info.LogInfo, fmt.Sprintf("[+] PocScan[%s] %s://%s%s %s %v", p.Code, req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name, tmpMap))
 					}
 					continue
 				}
 				strMap = append(strMap, tmpMap...)
 				if i == len(p.Rules)-1 {
-					common.LogSuccess(&info.LogInfo, fmt.Sprintf("[+] PocScan %s://%s%s %s %v", req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name, strMap))
+					common.LogSuccess(&info.LogInfo, fmt.Sprintf("[+] PocScan[%s] %s://%s%s %s %v", p.Code, req.Url.Scheme, req.Url.Host, req.Url.Path, p.Name, strMap))
 					//防止后续继续打印poc成功信息
 					return false, nil
 				}

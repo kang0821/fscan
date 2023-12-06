@@ -60,10 +60,11 @@ func (*ScanApi) StartScan(c *gin.Context) {
 }
 
 func sendNotify(configInfo *common.ConfigInfo, scanProgress, fileUrl string) {
-	param, _ := json.Marshal(map[string]string{
+	param, _ := json.Marshal(map[string]interface{}{
 		"taskId":       configInfo.TaskId,
 		"recordId":     configInfo.RecordId,
 		"scanProgress": scanProgress,
+		"scanStatus":   true,
 		"fileUrl":      fileUrl,
 	})
 	resp, err := http.Post(configInfo.NotifyUrl, "application/json", bytes.NewReader(param))

@@ -10,8 +10,9 @@ import (
 )
 
 type JsonText struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type    string `json:"type"`
+	Text    string `json:"text"`
+	PocCode string `json:"pocCode"`
 }
 
 func InitLog(info *ConfigInfo) {
@@ -56,6 +57,7 @@ func WriteFile(result string, JsonOutput bool, filename string) {
 	if JsonOutput {
 		var scantype string
 		var text string
+		var pocCode string
 		if strings.HasPrefix(result, "[+]") || strings.HasPrefix(result, "[*]") || strings.HasPrefix(result, "[-]") {
 			//找到第二个空格的位置
 			index := strings.Index(result[4:], " ")
@@ -65,14 +67,20 @@ func WriteFile(result string, JsonOutput bool, filename string) {
 			} else {
 				scantype = result[4 : 4+index]
 				text = result[4+index+1:]
+
+				if strings.HasPrefix(scantype, "PocScan") {
+					pocCode = scantype[8 : len(scantype)-1]
+					scantype = "PocScan"
+				}
 			}
 		} else {
 			scantype = "msg"
 			text = result
 		}
 		jsonText := JsonText{
-			Type: scantype,
-			Text: text,
+			Type:    scantype,
+			Text:    text,
+			PocCode: pocCode,
 		}
 		jsonData, err := json.Marshal(jsonText)
 		if err != nil {

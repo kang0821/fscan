@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/shadow1ng/fscan/Plugins"
+	"github.com/shadow1ng/fscan/client"
 	"github.com/shadow1ng/fscan/common"
 	"github.com/shadow1ng/fscan/model/request"
 	"github.com/shadow1ng/fscan/model/response"
@@ -34,26 +35,26 @@ func (*ScanApi) StartScan(c *gin.Context) {
 
 	/* 将扫描任务放入协程中处理，直接响应。因为扫描过程会非常慢，http调用时会超时 */
 	go func() {
-		common.ScanTaskHolder[scanRequest.ConfigInfo.RecordId] = &common.ScanTask{
+		client.ScanTaskHolder[scanRequest.ConfigInfo.RecordId] = &client.ScanTask{
 			TaskId:    scanRequest.ConfigInfo.TaskId,
 			RecordId:  scanRequest.ConfigInfo.RecordId,
-			Status:    common.SCANNING,
+			Status:    client.SCANNING,
 			StartTime: time.Now().Unix(),
 		}
 		var fileUrl string
 		defer func() {
-			common.ScanTaskHolder[scanRequest.ConfigInfo.RecordId].EndTime = time.Now().Unix()
-			common.ScanTaskHolder[scanRequest.ConfigInfo.RecordId].Status = common.DONE
+			client.ScanTaskHolder[scanRequest.ConfigInfo.RecordId].EndTime = time.Now().Unix()
+			client.ScanTaskHolder[scanRequest.ConfigInfo.RecordId].Status = client.DONE
 			if err := recover(); err != nil {
 				glog.Errorf("漏洞扫描出现异常: %v\n", err)
 				debug.PrintStack()
 			}
 			// 推送结果
-			sendNotify(&scanRequest.ConfigInfo, string(common.DONE), fileUrl)
+			sendNotify(&scanRequest.ConfigInfo, string(client.DONE), fileUrl)
 		}()
 		Plugins.Scan(&scanRequest.ConfigInfo, scanRequest.HostInfo)
 		// 上传扫描结果文件到minio
-		fileUrl, _ = common.Context.Minio.Upload(scanRequest.ConfigInfo.Outputfile)
+		fileUrl, _ = client.Context.Minio.Upload(scanRequest.ConfigInfo.Outputfile)
 	}()
 	response.Ok(c)
 }
@@ -65,7 +66,7 @@ func sendNotify(configInfo *common.ConfigInfo, scanProgress, fileUrl string) {
 		"scanProgress": scanProgress,
 		"fileUrl":      fileUrl,
 	})
-	resp, err := http.Post("POST", configInfo.NotifyUrl, bytes.NewReader(param))
+	resp, err := http.Post(configInfo.NotifyUrl, "application/json", bytes.NewReader(param))
 	if err != nil {
 		glog.Errorf("推送扫描进度失败: %v\n", err)
 		return

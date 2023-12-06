@@ -5,7 +5,6 @@ import (
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/shadow1ng/fscan/common"
 	"github.com/shadow1ng/fscan/config"
 	"github.com/tomatome/grdp/glog"
 	"log"
@@ -18,7 +17,7 @@ type MinioContext struct {
 
 func InitMinio(minioConfig config.Minio) {
 	var err error
-	common.Context.Minio.MinioClient, err = minio.New(minioConfig.Endpoint, &minio.Options{
+	Context.Minio.MinioClient, err = minio.New(minioConfig.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(minioConfig.AccessKeyID, minioConfig.SecretAccessKey, ""),
 		Secure: false,
 	})

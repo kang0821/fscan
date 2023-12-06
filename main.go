@@ -20,7 +20,7 @@ func main() {
 	util.CreateYamlFactory("config.yml", &config.Config)
 	client.InitMinio(config.Config.Minio)
 	client.InitRedis(config.Config.Redis)
-	//client.InitMysql(config.Config.Mysql)
+	client.InitMysql(config.Config.Mysql)
 
 	WebScan.LoadAllPocs()
 
@@ -30,6 +30,7 @@ func main() {
 		for {
 			select {
 			case <-syncPocTemplateTicker.C:
+				glog.Infof("########################################### [定时]准备同步漏洞模板 ###########################################")
 				WebScan.SyncDirtyPocs()
 			}
 		}

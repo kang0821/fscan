@@ -1,11 +1,9 @@
-package common
-
-import "github.com/shadow1ng/fscan/client"
+package client
 
 type ContextHolder struct {
-	Redis *client.RedisContext
-	Minio *client.MinioContext
-	Mysql *client.MysqlContext
+	Redis *RedisContext
+	Minio *MinioContext
+	Mysql *MysqlContext
 }
 
 type ScanTask struct {
@@ -29,7 +27,7 @@ const (
 var ScanTaskHolder = make(map[string]*ScanTask)
 
 var Context = ContextHolder{
-	Redis: &client.RedisContext{},
-	Minio: &client.MinioContext{},
-	Mysql: &client.MysqlContext{},
+	Redis: &RedisContext{},
+	Minio: &MinioContext{},
+	Mysql: &MysqlContext{},
 }

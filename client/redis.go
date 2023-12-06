@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"github.com/redis/go-redis/v9"
-	"github.com/shadow1ng/fscan/common"
 	"github.com/shadow1ng/fscan/config"
 	"github.com/tomatome/grdp/glog"
 	"time"
@@ -17,7 +16,7 @@ func InitRedis(redisConfig config.Redis) {
 	//glog.SetLevel(glog.INFO)
 	//logger := log.New(os.Stdout, "", 0)
 	//glog.SetLogger(logger)
-	common.Context.Redis.RedisClient = redis.NewClusterClient(&redis.ClusterOptions{
+	Context.Redis.RedisClient = redis.NewClusterClient(&redis.ClusterOptions{
 		Addrs:    redisConfig.Nodes,
 		Password: redisConfig.Password,
 	})

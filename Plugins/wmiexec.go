@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/shadow1ng/fscan/common"
+	"github.com/tomatome/grdp/glog"
 	"os"
 	"strings"
 	"time"
@@ -20,7 +21,7 @@ func init() {
 	}
 	clientHost, err := os.Hostname()
 	if err != nil {
-		fmt.Println(err)
+		glog.Error(err)
 	}
 	ClientHost = clientHost
 	flag = true

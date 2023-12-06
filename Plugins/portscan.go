@@ -3,6 +3,7 @@ package Plugins
 import (
 	"fmt"
 	"github.com/shadow1ng/fscan/common"
+	"github.com/tomatome/grdp/glog"
 	"sort"
 	"strconv"
 	"sync"
@@ -18,7 +19,7 @@ func PortScan(hostslist []string, configInfo *common.ConfigInfo) []string {
 	var AliveAddress []string
 	probePorts := common.ParsePort(configInfo.WebPorts)
 	if len(probePorts) == 0 {
-		fmt.Printf("[-] parse port %s error, please check your port format\n", configInfo.WebPorts)
+		glog.Infof("[-] parse port %s error, please check your port format\n", configInfo.WebPorts)
 		return AliveAddress
 	}
 	noPorts := common.ParsePort(configInfo.NoPorts)

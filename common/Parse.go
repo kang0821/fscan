@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/tomatome/grdp/glog"
 	"net/url"
 	"os"
 	"strconv"
@@ -109,7 +110,7 @@ func ParsePass(Info *ConfigInfo) {
 func Readfile(filename string) ([]string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Printf("Open %s error, %v\n", filename, err)
+		glog.Errorf("Open %s error, %v\n", filename, err)
 		panic(errors.New("Open " + filename + " error"))
 	}
 	defer file.Close()
@@ -127,7 +128,7 @@ func Readfile(filename string) ([]string, error) {
 
 func ParseInput(configInfo *ConfigInfo, hostInfo *HostInfo) {
 	if hostInfo.Host == "" && configInfo.HostFile == "" && configInfo.URL == "" && configInfo.UrlFile == "" {
-		fmt.Println("Host is none")
+		glog.Info("Host is none")
 		//flag.Usage()
 		panic(errors.New("host is none"))
 	}
@@ -173,10 +174,9 @@ func ParseInput(configInfo *ConfigInfo, hostInfo *HostInfo) {
 		}
 	}
 	if configInfo.Socks5Proxy != "" {
-		fmt.Println("Socks5Proxy:", configInfo.Socks5Proxy)
 		_, err := url.Parse(configInfo.Socks5Proxy)
 		if err != nil {
-			fmt.Println("Socks5Proxy parse error:", err)
+			glog.Errorf("Socks5Proxy parse error:", err)
 			panic(errors.New("Socks5Proxy parse error"))
 		}
 		configInfo.NoPing = true
@@ -189,25 +189,24 @@ func ParseInput(configInfo *ConfigInfo, hostInfo *HostInfo) {
 		} else if !strings.Contains(configInfo.Proxy, "://") {
 			configInfo.Proxy = "http://127.0.0.1:" + configInfo.Proxy
 		}
-		fmt.Println("Proxy:", configInfo.Proxy)
 		if !strings.HasPrefix(configInfo.Proxy, "socks") && !strings.HasPrefix(configInfo.Proxy, "http") {
 			panic(errors.New("no support this proxy"))
 		}
 		_, err := url.Parse(configInfo.Proxy)
 		if err != nil {
-			fmt.Println("Proxy parse error:", err)
+			glog.Errorf("Proxy parse error:%v", err)
 			panic(errors.New("proxy parse error"))
 		}
 	}
 
 	if configInfo.Hash != "" && len(configInfo.Hash) != 32 {
-		fmt.Println("[-] Hash is error,len(hash) must be 32")
+		glog.Error("[-] Hash is error,len(hash) must be 32")
 		panic(errors.New("[-] Hash is error,len(hash) must be 32"))
 	} else {
 		var err error
 		configInfo.HashBytes, err = hex.DecodeString(configInfo.Hash)
 		if err != nil {
-			fmt.Println("[-] Hash is error,hex decode error")
+			glog.Error("[-] Hash is error,hex decode error")
 			panic(errors.New("[-] Hash is error,hex decode error"))
 		}
 	}
@@ -246,7 +245,7 @@ func ParseScantype(Info *ConfigInfo) {
 			port, _ := PORTList[Info.Scantype]
 			Info.WebPorts = strconv.Itoa(port)
 		}
-		fmt.Println("-m ", Info.Scantype, " start scan the port:", Info.WebPorts)
+		glog.Infof("-m ", Info.Scantype, " start scan the port:", Info.WebPorts)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/shadow1ng/fscan/WebScan/info"
 	"github.com/shadow1ng/fscan/common"
+	"github.com/tomatome/grdp/glog"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -68,12 +69,12 @@ func executePoc(info *common.ConfigInfo, oReq *http.Request, p *Poc) (bool, erro
 	}
 	env, err := NewEnv(&c)
 	if err != nil {
-		fmt.Printf("[-] %s environment creation error: %s\n", p.Name, err)
+		glog.Infof("[-] %s environment creation error: %s\n", p.Name, err)
 		return false, err, ""
 	}
 	req, err := ParseRequest(oReq)
 	if err != nil {
-		fmt.Printf("[-] %s ParseRequest error: %s\n", p.Name, err)
+		glog.Infof("[-] %s ParseRequest error: %s\n", p.Name, err)
 		return false, err, ""
 	}
 	variableMap := make(map[string]interface{})
@@ -90,7 +91,7 @@ func executePoc(info *common.ConfigInfo, oReq *http.Request, p *Poc) (bool, erro
 		}
 		err, _ = evalset(env, variableMap, k, expression)
 		if err != nil {
-			fmt.Printf("[-] %s evalset error: %v\n", p.Name, err)
+			glog.Errorf("[-] %s evalset error: %v\n", p.Name, err)
 		}
 	}
 	success := false
@@ -201,7 +202,7 @@ func executePoc(info *common.ConfigInfo, oReq *http.Request, p *Poc) (bool, erro
 func doSearch(re string, body string) map[string]string {
 	r, err := regexp.Compile(re)
 	if err != nil {
-		fmt.Println("[-] regexp.Compile error: ", err)
+		glog.Errorf("[-] regexp.Compile error: ", err)
 		return nil
 	}
 	result := r.FindStringSubmatch(body)
@@ -475,7 +476,7 @@ func clustersend(info *common.ConfigInfo, oReq *http.Request, variableMap map[st
 	out, err := Evaluate(env, rule.Expression, variableMap)
 	if err != nil {
 		if strings.Contains(err.Error(), "Syntax error") {
-			fmt.Println(rule.Expression, err)
+			glog.Errorf(rule.Expression, err)
 		}
 		return false, err
 	}

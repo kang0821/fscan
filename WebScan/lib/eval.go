@@ -13,6 +13,7 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter/functions"
 	"github.com/shadow1ng/fscan/common"
+	"github.com/tomatome/grdp/glog"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	"io"
 	"math/rand"
@@ -577,7 +578,7 @@ func reverseCheck(info *common.ConfigInfo, r *Reverse, timeout int64) bool {
 	}
 
 	if !bytes.Contains(resp.Body, []byte(`"data": []`)) && bytes.Contains(resp.Body, []byte(`"message": "OK"`)) { // api返回结果不为空
-		fmt.Println(urlStr)
+		glog.Info(urlStr)
 		return true
 	}
 	return false

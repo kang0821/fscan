@@ -2,8 +2,8 @@ package common
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/fatih/color"
+	"github.com/tomatome/grdp/glog"
 	"os"
 	"strings"
 	"time"
@@ -30,14 +30,14 @@ func SaveLog(info *ConfigInfo) {
 	for result := range info.LogInfo.Results {
 		if !info.LogInfo.Silent {
 			if info.LogInfo.Nocolor {
-				fmt.Println(*result)
+				glog.Info(*result)
 			} else {
 				if strings.HasPrefix(*result, "[+] InfoScan") {
 					color.Green(*result)
 				} else if strings.HasPrefix(*result, "[+]") {
 					color.Red(*result)
 				} else {
-					fmt.Println(*result)
+					glog.Info(*result)
 				}
 			}
 		}
@@ -51,7 +51,7 @@ func SaveLog(info *ConfigInfo) {
 func WriteFile(result string, JsonOutput bool, filename string) {
 	fl, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		fmt.Printf("Open %s error, %v\n", filename, err)
+		glog.Infof("Open %s error, %v\n", filename, err)
 		return
 	}
 	if JsonOutput {
@@ -84,14 +84,14 @@ func WriteFile(result string, JsonOutput bool, filename string) {
 		}
 		jsonData, err := json.Marshal(jsonText)
 		if err != nil {
-			fmt.Println(err)
+			glog.Error(err)
 			jsonText = JsonText{
 				Type: "msg",
 				Text: result,
 			}
 			jsonData, err = json.Marshal(jsonText)
 			if err != nil {
-				fmt.Println(err)
+				glog.Error(err)
 				jsonData = []byte(result)
 			}
 		}
@@ -102,15 +102,15 @@ func WriteFile(result string, JsonOutput bool, filename string) {
 	}
 	fl.Close()
 	if err != nil {
-		fmt.Printf("Write %s error, %v\n", filename, err)
+		glog.Errorf("Write %s error, %v\n", filename, err)
 	}
 }
 
 func LogError(logInfo *LogInfo, errinfo interface{}) {
 	if logInfo.WaitTime == 0 {
-		fmt.Printf("已完成 %v/%v %v \n", logInfo.End, logInfo.Num, errinfo)
+		glog.Infof("已完成 %v/%v %v \n", logInfo.End, logInfo.Num, errinfo)
 	} else if (time.Now().Unix()-logInfo.LogSucTime) > logInfo.WaitTime && (time.Now().Unix()-logInfo.LogErrTime) > logInfo.WaitTime {
-		fmt.Printf("已完成 %v/%v %v \n", logInfo.End, logInfo.Num, errinfo)
+		glog.Infof("已完成 %v/%v %v \n", logInfo.End, logInfo.Num, errinfo)
 		logInfo.LogErrTime = time.Now().Unix()
 	}
 }

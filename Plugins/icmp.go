@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/shadow1ng/fscan/common"
+	"github.com/tomatome/grdp/glog"
 	"golang.org/x/net/icmp"
 	"net"
 	"os/exec"
@@ -30,9 +31,9 @@ func CheckLive(configInfo *common.ConfigInfo, hostslist []string) []string {
 				ExistHosts[ip] = struct{}{}
 				if configInfo.LogInfo.Silent == false {
 					if configInfo.Ping == false {
-						fmt.Printf("(icmp) Target %-15s is alive\n", ip)
+						glog.Infof("(icmp) Target %-15s is alive\n", ip)
 					} else {
-						fmt.Printf("(ping) Target %-15s is alive\n", ip)
+						glog.Infof("(ping) Target %-15s is alive\n", ip)
 					}
 				}
 				AliveHosts = append(AliveHosts, ip)
@@ -52,7 +53,7 @@ func CheckLive(configInfo *common.ConfigInfo, hostslist []string) []string {
 		} else {
 			common.LogError(&configInfo.LogInfo, err)
 			//尝试无监听icmp探测
-			fmt.Println("trying RunIcmp2")
+			glog.Info("trying RunIcmp2")
 			conn, err := net.DialTimeout("ip4:icmp", "127.0.0.1", 3*time.Second)
 			defer func() {
 				if conn != nil {
@@ -64,8 +65,8 @@ func CheckLive(configInfo *common.ConfigInfo, hostslist []string) []string {
 			} else {
 				common.LogError(&configInfo.LogInfo, err)
 				//使用ping探测
-				fmt.Println("The current user permissions unable to send icmp packets")
-				fmt.Println("start ping")
+				glog.Info("The current user permissions unable to send icmp packets")
+				glog.Info("start ping")
 				RunPing(&livewg, hostslist, chanHosts)
 			}
 		}

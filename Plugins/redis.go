@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/shadow1ng/fscan/common"
+	"github.com/tomatome/grdp/glog"
 	"io"
 	"net"
 	"os"
@@ -128,14 +129,14 @@ func Expoilt(realhost string, conn net.Conn, info *common.ConfigInfo) error {
 		if info.RedisFile != "" {
 			writeok, text, err := writekey(conn, info.RedisFile)
 			if err != nil {
-				fmt.Println(fmt.Sprintf("[-] %v SSH write key errer: %v", realhost, text))
+				glog.Errorf(fmt.Sprintf("[-] %v SSH write key errer: %v", realhost, text))
 				return err
 			}
 			if writeok {
 				result := fmt.Sprintf("[+] Redis %v SSH public key was written successfully", realhost)
 				common.LogSuccess(&info.LogInfo, result)
 			} else {
-				fmt.Println("[-] Redis ", realhost, "SSHPUB write failed", text)
+				glog.Errorf("[-] Redis ", realhost, "SSHPUB write failed", text)
 			}
 		}
 	}

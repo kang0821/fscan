@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/shadow1ng/fscan/common"
+	"github.com/tomatome/grdp/glog"
 	"io"
 	"io/ioutil"
 	"net"
@@ -47,7 +48,7 @@ func MS17010EXP(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) {
 	}
 
 	if len(sc) < 20 {
-		fmt.Println("[-] no such sc")
+		glog.Errorf("[-] no such sc")
 		return
 	}
 

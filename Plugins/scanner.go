@@ -1,7 +1,6 @@
 package Plugins
 
 import (
-	"fmt"
 	"github.com/shadow1ng/fscan/WebScan"
 	"github.com/shadow1ng/fscan/WebScan/lib"
 	"github.com/shadow1ng/fscan/common"
@@ -30,7 +29,7 @@ func Scan(configInfo *common.ConfigInfo, hostInfo common.HostInfo) {
 	if len(Hosts) > 0 || len(configInfo.HostPort) > 0 {
 		if configInfo.NoPing == false && len(Hosts) > 1 || configInfo.Scantype == "icmp" {
 			Hosts = CheckLive(configInfo, Hosts)
-			fmt.Println("[*] Icmp alive hosts len is:", len(Hosts))
+			glog.Info("[*] Icmp alive hosts len is:", len(Hosts))
 		}
 		if configInfo.Scantype == "icmp" {
 			configInfo.LogInfo.LogWG.Wait()
@@ -44,7 +43,7 @@ func Scan(configInfo *common.ConfigInfo, hostInfo common.HostInfo) {
 			AlivePorts = NoPortScan(Hosts, configInfo.WebPorts, configInfo.NoPorts)
 		} else if len(Hosts) > 0 {
 			AlivePorts = PortScan(Hosts, configInfo)
-			fmt.Println("[*] alive ports len is:", len(AlivePorts))
+			glog.Info("[*] alive ports len is:", len(AlivePorts))
 			if configInfo.Scantype == "portscan" {
 				configInfo.LogInfo.LogWG.Wait()
 				return
@@ -54,13 +53,13 @@ func Scan(configInfo *common.ConfigInfo, hostInfo common.HostInfo) {
 			AlivePorts = append(AlivePorts, configInfo.HostPort...)
 			AlivePorts = common.RemoveDuplicate(AlivePorts)
 			configInfo.HostPort = nil
-			fmt.Println("[*] AlivePorts len is:", len(AlivePorts))
+			glog.Info("[*] AlivePorts len is:", len(AlivePorts))
 		}
 		var severports []string //severports := []string{"21","22","135"."445","1433","3306","5432","6379","9200","11211","27017"...}
 		for _, port := range common.PORTList {
 			severports = append(severports, strconv.Itoa(port))
 		}
-		fmt.Println("start vulscan")
+		glog.Info("start vulscan")
 		for _, targetIP := range AlivePorts {
 			hostInfo.Host, hostInfo.Ports = strings.Split(targetIP, ":")[0], strings.Split(targetIP, ":")[1]
 			if configInfo.Scantype == "all" || configInfo.Scantype == "main" {
@@ -95,7 +94,7 @@ func Scan(configInfo *common.ConfigInfo, hostInfo common.HostInfo) {
 	wg.Wait()
 	configInfo.LogInfo.LogWG.Wait()
 	close(configInfo.LogInfo.Results)
-	fmt.Printf("已完成 %v/%v\n", configInfo.LogInfo.End, configInfo.LogInfo.Num)
+	glog.Infof("已完成 %v/%v\n", configInfo.LogInfo.End, configInfo.LogInfo.Num)
 }
 
 var Mutex = &sync.Mutex{}

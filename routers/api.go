@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	v1 "github.com/shadow1ng/fscan/api/v1"
 	"github.com/shadow1ng/fscan/model/response"
-	"log"
+	"github.com/tomatome/grdp/glog"
 	"net/http"
 	"runtime/debug"
 )
@@ -34,7 +34,7 @@ func Recover(c *gin.Context) {
 	defer func() {
 		if r := recover(); r != nil {
 			//打印错误堆栈信息
-			log.Printf("panic: %v\n", r)
+			glog.Errorf("panic: %v\n", r)
 			debug.PrintStack()
 			//封装通用json返回
 			response.FailWithMessage(errorToString(r), c)

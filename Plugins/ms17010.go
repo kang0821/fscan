@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/shadow1ng/fscan/common"
+	"github.com/tomatome/grdp/glog"
 	"strings"
 	"time"
 )
@@ -87,7 +88,7 @@ func MS17010Scan(configInfo *common.ConfigInfo, hostInfo *common.HostInfo) error
 		// find byte count
 		byteCount := binary.LittleEndian.Uint16(sessionSetupResponse[7:9])
 		if n != int(byteCount)+45 {
-			fmt.Println("[-]", ip+":445", "ms17010 invalid session setup AndX response")
+			glog.Error("[-]", ip+":445", "ms17010 invalid session setup AndX response")
 		} else {
 			// two continous null bytes indicates end of a unicode string
 			for i := 10; i < len(sessionSetupResponse)-1; i++ {

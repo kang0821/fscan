@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/shadow1ng/fscan/common"
+	"github.com/tomatome/grdp/glog"
 	"golang.org/x/net/proxy"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -217,12 +218,12 @@ func LoadPoc(fileName string, Pocs embed.FS) (*Poc, error) {
 	yamlFile, err := Pocs.ReadFile("pocs/" + fileName)
 
 	if err != nil {
-		fmt.Printf("[-] load poc %s error1: %v\n", fileName, err)
+		glog.Errorf("[-] load poc %s error1: %v\n", fileName, err)
 		return nil, err
 	}
 	err = yaml.Unmarshal(yamlFile, p)
 	if err != nil {
-		fmt.Printf("[-] load poc %s error2: %v\n", fileName, err)
+		glog.Errorf("[-] load poc %s error2: %v\n", fileName, err)
 		return nil, err
 	}
 	return p, err
@@ -231,7 +232,7 @@ func LoadPoc(fileName string, Pocs embed.FS) (*Poc, error) {
 func SelectPoc(Pocs embed.FS, pocname string) []string {
 	entries, err := Pocs.ReadDir("pocs")
 	if err != nil {
-		fmt.Println(err)
+		glog.Error(err)
 	}
 	var foundFiles []string
 	for _, entry := range entries {
@@ -246,12 +247,12 @@ func LoadPocbyPath(fileName string) (*Poc, error) {
 	p := &Poc{}
 	data, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		fmt.Printf("[-] load poc %s error3: %v\n", fileName, err)
+		glog.Errorf("[-] load poc %s error3: %v\n", fileName, err)
 		return nil, err
 	}
 	err = yaml.Unmarshal(data, p)
 	if err != nil {
-		fmt.Printf("[-] load poc %s error4: %v\n", fileName, err)
+		glog.Errorf("[-] load poc %s error4: %v\n", fileName, err)
 		return nil, err
 	}
 	return p, err

@@ -53,6 +53,10 @@ func (*ScanApi) StartScan(c *gin.Context) {
 			}
 			// 推送结果
 			sendNotify(&scanRequest.ConfigInfo, string(client.DONE), fileUrl)
+			// 删除服务器文件
+			if err := os.Remove(scanRequest.ConfigInfo.Outputfile); err != nil {
+				glog.Errorf("删除服务器扫描结果文件[%s]失败：%v", scanRequest.ConfigInfo.Outputfile, err)
+			}
 		}()
 		Plugins.Scan(&scanRequest.ConfigInfo, scanRequest.HostInfo)
 		// 上传扫描结果文件到minio
@@ -60,12 +64,6 @@ func (*ScanApi) StartScan(c *gin.Context) {
 			panic(fmt.Errorf("上传扫描结果失败：%v", err))
 			return
 		}
-		// 删除服务器文件
-		defer func() {
-			if err := os.Remove(scanRequest.ConfigInfo.Outputfile); err != nil {
-				glog.Errorf("删除服务器扫描结果文件[%s]失败：%v", scanRequest.ConfigInfo.Outputfile, err)
-			}
-		}()
 	}()
 	response.Ok(c)
 }

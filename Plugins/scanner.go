@@ -14,6 +14,7 @@ import (
 func Scan(configInfo *common.ConfigInfo, hostInfo common.HostInfo) {
 	glog.Info("start infoscan")
 	WebScan.SyncDirtyPocs()
+	common.LogSuccess(&configInfo.LogInfo, "start")
 	Hosts, err := common.ParseIP(configInfo, &hostInfo)
 	if err != nil {
 		panic(err)

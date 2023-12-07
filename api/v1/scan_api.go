@@ -3,6 +3,7 @@ package v1
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/shadow1ng/fscan/Plugins"
 	"github.com/shadow1ng/fscan/client"
@@ -12,6 +13,7 @@ import (
 	"github.com/tomatome/grdp/glog"
 	"io"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"time"
 )
@@ -54,7 +56,16 @@ func (*ScanApi) StartScan(c *gin.Context) {
 		}()
 		Plugins.Scan(&scanRequest.ConfigInfo, scanRequest.HostInfo)
 		// 上传扫描结果文件到minio
-		fileUrl, _ = client.Context.Minio.Upload(scanRequest.ConfigInfo.Outputfile)
+		if fileUrl, err = client.Context.Minio.Upload(scanRequest.ConfigInfo.Outputfile); err != nil {
+			panic(fmt.Errorf("上传扫描结果失败：%v", err))
+			return
+		}
+		// 删除服务器文件
+		defer func() {
+			if err := os.Remove(scanRequest.ConfigInfo.Outputfile); err != nil {
+				glog.Errorf("删除服务器扫描结果文件[%s]失败：%v", scanRequest.ConfigInfo.Outputfile, err)
+			}
+		}()
 	}()
 	response.Ok(c)
 }
@@ -65,6 +76,7 @@ func sendNotify(configInfo *common.ConfigInfo, scanProgress, fileUrl string) {
 		"recordId":     configInfo.RecordId,
 		"scanProgress": scanProgress,
 		"scanStatus":   true,
+		"statusMsg":    "",
 		"fileUrl":      fileUrl,
 	})
 	resp, err := http.Post(configInfo.NotifyUrl, "application/json", bytes.NewReader(param))

@@ -5,8 +5,8 @@ scan:
   # ONCE:       启动时同步
   # INTERVAL:   定时同步
   # ALWAYS:     实时同步
-  templateSyncStrategy: ONCE
-  templateSyncCron: aaa
+  templateSyncStrategy: ALWAYS
+  templateSyncCron: "-"
 
 minio:
   endpoint: 10.0.120.111:9800
@@ -28,6 +28,8 @@ redis:
     - 10.0.12.230:6006
   password: terra123
   db: 0
+  # 缓存前缀，与imp-service项目配置文件一致，请注意修改！！！  开发环境：ns-dev  测试环境：ns-test  生产环境：ns-prod
+  keyPrefix: ns-dev
 
 
 mysql:

@@ -26,9 +26,10 @@ type Minio struct {
 }
 
 type Redis struct {
-	Nodes    []string `yaml:"nodes"`
-	Password string   `yaml:"password"`
-	DB       int      `yaml:"db"`
+	Nodes     []string `yaml:"nodes"`
+	Password  string   `yaml:"password"`
+	DB        int      `yaml:"db"`
+	KeyPrefix string   `yaml:"keyPrefix"`
 }
 
 type Mysql struct {

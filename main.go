@@ -36,5 +36,27 @@ func main() {
 		}
 	}
 
+	//ScanRequest := request.ScanRequest{
+	//	HostInfo: common.HostInfo{
+	//		Host: "10.0.12.226",
+	//	},
+	//	ConfigInfo: common.ConfigInfo{
+	//		TaskId:     string(time.Now().Unix()),
+	//		RecordId:   string(time.Now().Unix()),
+	//		NotifyUrl:  "123",
+	//		Scantype:   "all",
+	//		JsonOutput: true,
+	//		Outputfile: "E:\\report\\" + string(time.Now().Unix()) + ".txt",
+	//	},
+	//}
+	//defer func() {
+	//	os.Remove(ScanRequest.ConfigInfo.Outputfile)
+	//}()
+	//ScanRequest.ResolveRequest()
+	//
+	//common.InitLog(&ScanRequest.ConfigInfo)
+	//common.Parse(&ScanRequest.ConfigInfo, &ScanRequest.HostInfo)
+	//Plugins.Scan(&ScanRequest.ConfigInfo, ScanRequest.HostInfo)
+
 	_ = routers.InitApiRouter().Run(":" + strconv.Itoa(config.Config.Port))
 }

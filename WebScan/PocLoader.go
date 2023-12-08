@@ -16,7 +16,7 @@ var AllPocs = make(map[string]*lib.Poc)
 func LoadAllPocs() {
 	var flawList []entity.FwFlaw
 	glog.Info("########################################### 准备预加载所有漏洞模板... ###########################################")
-	client.Context.Mysql.MysqlClient.Find(&flawList, entity.FwFlaw{DELETED: false})
+	client.Context.Mysql.MysqlClient.Where("DELETED = 0").Find(&flawList)
 	//flawList = append(flawList, entity.FwFlaw{
 	//	CODE:   "123",
 	//	NAME:   "123",
@@ -45,16 +45,13 @@ func SyncDirtyPocs() {
 		return
 	}
 	nodeIp := common.GetIP()
-	dirtyCacheKey := "imp-service::flaw::dirty::merge" + nodeIp
-	removeCacheKey := "imp-service::flaw::dirty::remove" + nodeIp
-	mergePocs, err := client.Context.Redis.HGetAll(dirtyCacheKey) // 发生变更的漏洞
-	if err != nil {
-		glog.Error("获取变更的漏洞信息时出错：%s", err.Error())
-		return
-	}
+	dirtyCacheKey := config.Config.Redis.KeyPrefix + ":imp-service:flaw:dirty:merge:" + nodeIp
+	removeCacheKey := config.Config.Redis.KeyPrefix + "imp-service:flaw:dirty:remove:" + nodeIp
 
-	// 去mysql漏洞库获取到所有变更的漏洞
+	// 发生变更的漏洞
+	mergePocs := client.Context.Redis.SGet(dirtyCacheKey)
 	if len(mergePocs) > 0 {
+		// 去mysql漏洞库获取到所有变更的漏洞
 		var dirtyFlaws []entity.FwFlaw
 		client.Context.Mysql.MysqlClient.Where("CODE IN (?) AND DELETED = 0", mergePocs).Find(&dirtyFlaws)
 		if len(dirtyFlaws) > 0 {
@@ -69,12 +66,8 @@ func SyncDirtyPocs() {
 		client.Context.Redis.Del(dirtyCacheKey)
 	}
 
-	removePocs, err := client.Context.Redis.HGetAll(removeCacheKey) // 被删除的漏洞
-	if err != nil {
-		glog.Error("获取移除的漏洞信息时出错：%s", err.Error())
-		return
-	}
-	// 删除的
+	// 被删除的漏洞
+	removePocs := client.Context.Redis.SGet(removeCacheKey)
 	if len(removePocs) > 0 {
 		for _, removePoc := range removePocs {
 			delete(AllPocs, removePoc)

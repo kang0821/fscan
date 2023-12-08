@@ -273,14 +273,19 @@ func RandInt(min, max int) int {
 }
 
 func GetIP() (ip string) {
-	addrs, err := net.InterfaceAddrs()
+	hostname, err := os.Hostname()
 	if err != nil {
-		glog.Warn("获取本机IP失败：%s", err.Error())
-		return
+		glog.Warn("获取本机Hostname失败：%s", err.Error())
+		return "127.0.0.1"
 	}
-	for _, address := range addrs {
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
-			return ipnet.IP.String()
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		glog.Warn("获取本机LookupIP失败：%s", err.Error())
+		return "127.0.0.1"
+	}
+	for _, ip := range ips {
+		if !ip.IsLoopback() && ip.To4() != nil {
+			return ip.String()
 		}
 	}
 	glog.Warn("解析本机IP失败")
